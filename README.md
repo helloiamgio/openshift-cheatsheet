@@ -34,8 +34,8 @@ https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/d
 - [Miscellaneous Commands](#miscellaneous-commands)
 
 ---
-
-## **Login and Configuration**
+## ** ★ Login and Configuration ★ **
+---
 
 ### oc Autocompletion
 ```bash
