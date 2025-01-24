@@ -79,8 +79,8 @@ oc get useroauthaccesstokens
 ```
 
 ---
-
 ## **Useful Commands**
+---
 
 ### List all Projects
 ```bash
