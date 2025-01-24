@@ -616,6 +616,117 @@ oc scale --replicas 0 -n openshift-cluster-version deployments/cluster-version-o
 
 ---
 
+## **Machine Config**
+
+### List all MachineConfig objects
+```bash
+oc get machineconfigs
+```
+
+### View details of a specific MachineConfig
+```bash
+oc describe machineconfig <machineconfig-name>
+```
+
+### Create a custom MachineConfig
+Example YAML:
+```yaml
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: custom-config
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+      - path: /etc/mycustomconfig
+        contents:
+          source: data:,custom%20content%20here
+```
+Apply the configuration:
+```bash
+oc apply -f custom-config.yaml
+```
+
+### Update Kubelet Configuration
+Create a KubeletConfig:
+```yaml
+apiVersion: machineconfiguration.openshift.io/v1
+kind: KubeletConfig
+metadata:
+  name: custom-kubelet
+spec:
+  machineConfigPoolSelector:
+    matchLabels:
+      custom-kubelet: enabled
+  kubeletConfig:
+    cpuManagerPolicy: "static"
+    cpuManagerReconcilePeriod: "5s"
+```
+Apply the configuration:
+```bash
+oc apply -f kubelet-config.yaml
+```
+
+---
+
+## **Monitoring**
+
+### List Monitoring Stack Components
+```bash
+oc get pods -n openshift-monitoring
+```
+
+### Restart a Monitoring Component
+```bash
+oc rollout restart deployment/grafana -n openshift-monitoring
+```
+
+### Silence Alerts
+Create a silence using the Alertmanager UI or CLI. Example CLI:
+```bash
+amtool silence add alertname="TargetDown" instance="example-instance"
+```
+
+### Query Prometheus
+Access the Prometheus UI or use `oc` to query:
+```bash
+oc exec -n openshift-monitoring prometheus-k8s-0 -c prometheus -- curl 'http://localhost:9090/api/v1/query?query=up'
+```
+
+### Enable User Workload Monitoring
+Patch the config to enable it:
+```bash
+oc patch configmap cluster-monitoring-config -n openshift-monitoring --patch='{"data":{"config.yaml":"enableUserWorkload: true"}}'
+```
+
+### Monitor Custom Metrics
+Deploy a custom application exposing metrics and configure Prometheus to scrape them by creating a `ServiceMonitor`:
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: custom-app-monitor
+  labels:
+    team: custom-app
+spec:
+  selector:
+    matchLabels:
+      app: custom-app
+  endpoints:
+  - port: metrics
+```
+Apply the configuration:
+```bash
+oc apply -f custom-app-monitor.yaml
+```
+
+---
+
 ## **OpenShift Container Platform Troubleshooting**
 
 ### Inspect all resources in a namespace
