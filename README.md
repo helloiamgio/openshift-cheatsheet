@@ -1267,6 +1267,118 @@ oc logs docker-registry-n-{xxxxx} -n default | less
 oc debug node/master01
 ```
 
+## **Troubleshooting**
+
+### Check Cluster Status
+```bash
+oc status
+```
+
+### View Cluster Events
+```bash
+oc get events -A --sort-by=.metadata.creationTimestamp
+```
+
+### Check Pod Logs
+```bash
+oc logs pod-name
+```
+
+Follow logs for a pod:
+```bash
+oc logs -f pod-name
+```
+
+### Debug a Pod
+Start a debug session:
+```bash
+oc debug pod/pod-name
+```
+
+### Inspect a Node
+```bash
+oc debug node/node-name
+```
+
+### Restart a Deployment
+```bash
+oc rollout restart deployment/deployment-name
+```
+
+### Check Network Connectivity from a Pod
+Use a debug pod to check connectivity:
+```bash
+oc run debug-pod --image=registry.access.redhat.com/ubi8/ubi --restart=Never --command -- sleep infinity
+oc exec -it debug-pod -- curl -v http://service-name:port
+```
+
+### Diagnose DNS Issues
+Check if DNS resolution works:
+```bash
+oc exec -it pod-name -- nslookup service-name
+```
+
+### View Resource Usage
+View node resource usage:
+```bash
+oc adm top nodes
+```
+
+View pod resource usage:
+```bash
+oc adm top pods -A
+```
+
+### Describe Resources
+Describe a pod:
+```bash
+oc describe pod pod-name
+```
+
+Describe a node:
+```bash
+oc describe node node-name
+```
+
+### Collect Cluster Diagnostics
+```bash
+oc adm diagnostics
+```
+
+### Use Must-Gather
+Collect diagnostics using must-gather:
+```bash
+oc adm must-gather
+```
+
+### Check Image Registry Logs
+```bash
+oc logs -n openshift-image-registry deployment/image-registry
+```
+
+### Analyze CrashLoopBackOff
+Check the previous logs for a pod:
+```bash
+oc logs --previous pod-name
+```
+
+### Debug with a Temporary Namespace
+Create a temporary debug namespace:
+```bash
+oc new-project debug-namespace
+```
+Delete it when done:
+```bash
+oc delete project debug-namespace
+```
+
+### Reset a Node
+Drain and reboot a node:
+```bash
+oc adm drain node-name --ignore-daemonsets --force
+reboot
+```
+
 ---
 
 ## **Security**
