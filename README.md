@@ -428,6 +428,21 @@ oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:moni
 oc adm policy add-scc-to-user anyuid -z default
 ```
 
+
+### Show SCC and add policy
+```bash
+oc get pods -A -o custom-columns="NAME:.metadata.name,SCC:.metadata.annotations.openshift\.io/scc"
+oc get pods -o custom-columns="NAME:.metadata.name,SECURITY_CONTEXT:.spec.securityContext"
+
+oc get deployment <DEPLOY> -n <NAMESPACE> -o yaml | oc adm policy scc-subject-review -f -
+oc get pod <POD> -o yaml | oc adm policy scc-subject-review -f -
+
+oc adm policy add-scc-to-user hostmount-anyuid -z default
+
+oc get scc -o custom-columns=Name:.metadata.name,Users:.users,Priority:.priority
+oc get scc restricted-v2 -o custom-columns=SECCOMP_PROFILE:.seccompProfiles 
+```
+
 ---
 
 ## **Identity Providers**
@@ -856,19 +871,6 @@ oc set env deployment/ --from secret/oia-secret
 ```bash
 oc set volumes dc/myapp --add --name=secret-volume --mount-path=/opt/app-root/ \
 --secret-name=oia-secret
-```
-
-### Show SCC and add policy
-```bash
-oc get pods -A -o custom-columns="NAME:.metadata.name,SCC:.metadata.annotations.openshift\.io/scc"
-oc get pods -o custom-columns="NAME:.metadata.name,SECURITY_CONTEXT:.spec.securityContext"
-
-oc get deployment <DEPLOY> -n <NAMESPACE> -o yaml | oc adm policy scc-subject-review -f -
-oc get pod <POD> -o yaml | oc adm policy scc-subject-review -f -
-
-oc adm policy add-scc-to-user hostmount-anyuid -z default
-
-oc get scc -o custom-columns=Name:.metadata.name,Users:.users,Priority:.priority
 ```
 
 ---
