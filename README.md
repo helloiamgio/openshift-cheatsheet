@@ -49,7 +49,129 @@ oc get useroauthaccesstokens
 
 ---
 
-## **Basic Commands**
+## **Useful Commands**
+
+### List all Projects
+```bash
+oc get projects
+```
+
+### Switch to a Project
+```bash
+oc project myproject
+```
+
+### Get Resources in a Project
+List all resources in the current project:
+```bash
+oc get all
+```
+
+List pods with custom output:
+```bash
+oc get pods -o wide
+```
+
+### Apply Configuration from a File
+```bash
+oc apply -f config.yaml
+```
+
+### Create Objects Using Bash Here Documents
+Create a ConfigMap directly using a here document:
+```bash
+oc apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-config
+  namespace: myproject
+data:
+  key: value
+EOF
+```
+
+### Export Resources to a File
+```bash
+oc get deployment my-deployment -o yaml > deployment.yaml
+```
+
+### Delete a Resource
+```bash
+oc delete pod my-pod
+```
+
+### Debug a Pod
+Start a debug session for a pod:
+```bash
+oc debug pod/my-pod
+```
+
+### Check Cluster Status
+```bash
+oc status
+```
+
+### View Cluster Nodes
+```bash
+oc get nodes
+```
+
+### Describe a Node
+```bash
+oc describe node <node-name>
+```
+
+### Get Logs for a Pod
+```bash
+oc logs my-pod
+```
+
+### Follow Logs for a Pod
+```bash
+oc logs -f my-pod
+```
+
+### Port Forward a Pod
+```bash
+oc port-forward my-pod 8080:80
+```
+
+### Execute a Command in a Running Pod
+```bash
+oc exec my-pod -- ls /tmp
+```
+
+### Scale a Deployment
+```bash
+oc scale deployment my-deployment --replicas=3
+```
+
+### Create a New Application
+```bash
+oc new-app my-image-stream
+```
+
+### Manage Kubeconfig Files
+Switch kubeconfig contexts:
+```bash
+oc config use-context <context-name>
+```
+
+List all contexts:
+```bash
+oc config get-contexts
+```
+
+Set a specific context as default:
+```bash
+oc config set-context --current --namespace=myproject
+```
+
+Merge multiple kubeconfig files:
+```bash
+KUBECONFIG=config1:config2:config3 oc config view --merge --flatten > merged-config
+```
 
 ### Create a new app from a GitHub Repository
 ```bash
