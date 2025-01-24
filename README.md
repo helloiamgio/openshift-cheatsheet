@@ -4,6 +4,37 @@
 
 https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/developer-cli-commands.html
 
+## Table of Contents
+- [Login and Configuration](#login-and-configuration)
+- [Useful Commands](#useful-commands)
+- [Deployments](#deployments)
+- [ConfigMaps](#configmaps)
+- [Managing Routes](#managing-routes)
+- [Managing Services](#managing-services)
+- [Resource Usage](#resource-usage)
+- [Clean up Resources](#clean-up-resources)
+- [Jobs](#jobs)
+- [Cluster](#cluster)
+- [RBAC](#rbac)
+- [Identity Providers](#identity-providers)
+- [Images](#images)
+- [Cluster Version](#cluster-version)
+- [Machine Config](#machine-config)
+- [Monitoring](#monitoring)
+- [Operator-Lifecycle-Manager (OLM)](#operator-lifecycle-manager-olm)
+- [Routers](#routers)
+- [Storage](#storage)
+- [Pull Secrets](#pull-secrets)
+- [Registries](#registries)
+- [OpenShift Container Platform Troubleshooting](#openshift-container-platform-troubleshooting)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Certificates](#certificates)
+- [API](#api)
+- [Miscellaneous Commands](#miscellaneous-commands)
+
+---
+
 ## **Login and Configuration**
 
 ### oc Autocompletion
