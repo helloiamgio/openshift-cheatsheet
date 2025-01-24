@@ -127,14 +127,47 @@ oc cp ./byteman-4.0.12 wildfly-basic-1-mrlt5:/opt/wildfly
 oc rollout latest ruby-ex
 ```
 
-### Pause automatic deployment rollout
+### Rollout a Deployment
 ```bash
-oc rollout pause dc $DEPLOYMENT
+oc rollout latest deployment/my-deployment
 ```
 
-### Resume automatic deployment rollout
+### Pause a Deployment
 ```bash
-oc rollout resume dc $DEPLOYMENT
+oc rollout pause deployment/my-deployment
+```
+
+### Resume a Deployment
+```bash
+oc rollout resume deployment/my-deployment
+```
+
+### Scale a Deployment
+```bash
+oc scale deployment/my-deployment --replicas=3
+```
+
+### Undo a Deployment Rollout
+```bash
+oc rollout undo deployment/my-deployment
+```
+
+### Check Deployment History
+```bash
+oc rollout history deployment/my-deployment
+```
+
+### Set Deployment Strategies
+```yaml
+spec:
+  strategy:
+    type: Rolling
+    rollingParams:
+      intervalSeconds: 1
+      updatePeriodSeconds: 1
+      timeoutSeconds: 600
+      maxUnavailable: 25%
+      maxSurge: 25%
 ```
 
 ### Define resource requests and limits in DeploymentConfig
