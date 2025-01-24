@@ -227,6 +227,36 @@ crictl stats
 
 ## **Clean up Resources**
 
+### Delete Completed Pods
+```bash
+oc delete pod --field-selector=status.phase==Succeeded --all-namespaces
+```
+
+### Change the image garbage collection (GC) thresholds
+Modify kubelet GC settings:
+```bash
+oc label machineconfigpool worker custom-kubelet=enabled
+cat <<EOF | oc apply -f -
+apiVersion: machineconfiguration.openshift.io/v1
+kind: KubeletConfig
+metadata:
+  name: custom-config
+spec:
+  machineConfigPoolSelector:
+    matchLabels:
+      custom-kubelet: enabled
+  kubeletConfig:
+    ImageGCHighThresholdPercent: 70
+    ImageGCLowThresholdPercent: 60
+EOF
+```
+
+### Full cleanup with Podman
+Run a full system prune:
+```bash
+sudo podman system prune -a -f
+```
+
 ### Delete all resources
 ```bash
 oc delete all --all
@@ -377,6 +407,43 @@ oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:moni
 ```bash
 oc adm policy add-scc-to-user anyuid -z default
 ```
+
+---
+
+## **Certificates**
+
+### Sign all pending Certificate Signing Requests (CSRs)
+```bash
+oc get csr -o name | xargs oc adm certificate approve
+```
+
+### Authenticate users using TLS certificates
+1. Generate a private key and CSR:
+   ```bash
+   mkdir ${OCP_USERNAME}
+   openssl req -new -nodes -subj "/CN=${OCP_USERNAME}" \
+     -keyout ${OCP_USERNAME}/private.key -out ${OCP_USERNAME}/request.csr
+   ```
+2. Create a CertificateSigningRequest:
+   ```bash
+   cat <<EOF | oc apply -f -
+   apiVersion: certificates.k8s.io/v1beta1
+   kind: CertificateSigningRequest
+   metadata:
+     name: tls-auth-${OCP_USERNAME}
+   spec:
+     signerName: "kubernetes.io/kube-apiserver-client"
+     request: $(cat ${OCP_USERNAME}/request.csr | base64 | tr -d '\n')
+     usages:
+       - digital signature
+       - key encipherment
+       - client auth
+   EOF
+   ```
+3. Approve the CSR:
+   ```bash
+   oc adm certificate approve tls-auth-${OCP_USERNAME}
+   ```
 
 ---
 
