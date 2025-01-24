@@ -6,6 +6,11 @@ https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/d
 
 ## **Login and Configuration**
 
+### oc Autocompletion
+```bash
+oc completion bash >>/etc/bash_completion.d/oc_completion
+```
+
 ### Login with a user
 ```bash
 oc login https://192.168.99.100:8443 -u developer -p developer
