@@ -1,5 +1,7 @@
 # OpenShift Cheat Sheet
 
+![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/ocp.gif)
+
 ## **Login and Configuration**
 
 ### Login with a user
