@@ -1003,6 +1003,117 @@ oc patch subscription my-operator -n openshift-operators --type merge --patch '{
 
 ---
 
+## **Routers**
+
+### Restart a Router
+Restart the default router deployment:
+```bash
+oc rollout restart deployment/router-default -n openshift-ingress
+```
+
+### List Router Pods
+```bash
+oc get pods -n openshift-ingress -l ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default
+```
+
+### Delete Router Pods to Trigger Reconciliation
+```bash
+oc delete pod -n openshift-ingress -l ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default
+```
+
+### Check Router Logs
+```bash
+oc logs -n openshift-ingress pod/router-default-xxxxx
+```
+
+### Expose a Route
+Expose a service using a route:
+```bash
+oc expose service my-service --hostname=my.custom.domain
+```
+
+### List Routes
+```bash
+oc get routes -A
+```
+
+---
+
+## **Storage**
+
+### List Persistent Volume Claims (PVCs)
+```bash
+oc get pvc -A
+```
+
+### Describe a PVC
+```bash
+oc describe pvc my-pvc
+```
+
+### Create a PVC
+Example YAML for a PVC:
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+Apply the PVC:
+```bash
+oc apply -f pvc.yaml
+```
+
+### List Storage Classes
+```bash
+oc get storageclass
+```
+
+### Set Default Storage Class
+```bash
+oc patch storageclass <storage-class-name> -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "true"}}}'
+```
+
+### Delete a PVC
+```bash
+oc delete pvc my-pvc
+```
+
+### Create a Persistent Volume (PV)
+Example YAML for a PV:
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data
+```
+Apply the PV:
+```bash
+oc apply -f pv.yaml
+```
+
+### Expand a PVC
+Ensure the underlying storage class supports expansion. Then patch the PVC:
+```bash
+oc patch pvc my-pvc -p '{"spec": {"resources": {"requests": {"storage": "20Gi"}}}}'
+```
+
+---
+
 ## **Pull Secrets**
 
 ### Create a Pull Secret
