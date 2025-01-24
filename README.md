@@ -386,6 +386,36 @@ oc delete pod -n openshift-ingress -l ingresscontroller.operator.openshift.io/de
 
 ---
 
+
+## **RBAC**
+
+### List role per groups
+```bash
+oc get rolebindings,clusterrolebindings --all-namespaces -o json | jq -r '
+.items[] | 
+select(.subjects[]? | select(.kind == "Group")) as $binding |
+$binding.subjects[] | 
+select(.kind == "Group") | 
+"NAMESPACE: \($binding.metadata.namespace // "Cluster-wide") KIND: \($binding.kind) NAME: \($binding.metadata.name) ROLE: \($binding.roleRef.name) GROUP: \(.name)"'
+```
+
+### Add a role to a user
+```bash
+oc adm policy add-role-to-user admin oia -n python
+```
+
+### Add a cluster role to a user
+```bash
+oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:monitoring:default
+```
+
+### Add a security context constraint (SCC) to a user
+```bash
+oc adm policy add-scc-to-user anyuid -z default
+```
+
+---
+
 ## **Identity Providers**
 
 ### Add an HTPasswd Identity Provider
@@ -829,24 +859,6 @@ oc get scc -o custom-columns=Name:.metadata.name,Users:.users,Priority:.priority
 
 ---
 
-## **Managing User Roles**
-
-### Add a role to a user
-```bash
-oc adm policy add-role-to-user admin oia -n python
-```
-
-### Add a cluster role to a user
-```bash
-oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:monitoring:default
-```
-
-### Add a security context constraint (SCC) to a user
-```bash
-oc adm policy add-scc-to-user anyuid -z default
-```
-
----
 
 ## **Certificates**
 
