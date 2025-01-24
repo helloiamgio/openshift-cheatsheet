@@ -120,7 +120,7 @@ oc cp ./byteman-4.0.12 wildfly-basic-1-mrlt5:/opt/wildfly
 
 ---
 
-## **How to Manage Deployments**
+## **Deployments**
 
 ### Manual deployment
 ```bash
@@ -156,6 +156,20 @@ oc scale dc/nginx --replicas=2
 ### Define Horizontal Pod Autoscaler (HPA)
 ```bash
 oc autoscale dc foo --min=2 --max=4 --cpu-percent=10
+```
+
+---
+
+## **ConfigMaps**
+
+### View ConfigMap Data
+```bash
+oc get configmap my-config -o yaml
+```
+
+### Update a ConfigMap
+```bash
+oc create configmap my-config --from-literal=key=value --dry-run=client -o yaml | oc apply -f -
 ```
 
 ---
@@ -307,6 +321,16 @@ oc patch schedulers.config.openshift.io/cluster --type merge --patch '{"spec":{"
 This removes the worker label from the masters. OpenShift components will move to worker nodes when rescheduled. Delete the pods to trigger reconciliation.
 
 ---
+
+### Set a Default Node Selector
+```bash
+oc patch namespace default -p '{"metadata": {"annotations": {"openshift.io/node-selector": "node-role.kubernetes.io/worker"}}}'
+```
+
+### Disable Project-wide Node Selector
+```bash
+oc annotate namespace default openshift.io/node-selector-
+```
 
 ### Routers
 
