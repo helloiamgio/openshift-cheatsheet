@@ -296,6 +296,164 @@ kubectl create cronjob hello --image=alpine --schedule="*/1 * * * *" -- echo "He
 
 ---
 
+## **Cluster**
+
+### Set control-plane nodes as NoSchedulable
+```bash
+oc patch schedulers.config.openshift.io/cluster --type merge --patch '{"spec":{"mastersSchedulable": false}}'
+```
+This removes the worker label from the masters. OpenShift components will move to worker nodes when rescheduled. Delete the pods to trigger reconciliation.
+
+---
+
+### Routers
+
+#### Rollout the latest deployment
+```bash
+oc rollout -n openshift-ingress restart deployment/router-default
+```
+
+#### Delete router pods to force reconciliation
+```bash
+oc delete pod -n openshift-ingress -l ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default
+```
+
+---
+
+### Image Registry
+
+#### Rollout the latest deployment
+```bash
+oc rollout -n openshift-image-registry restart deploy/image-registry
+```
+
+#### Delete image registry pods
+```bash
+oc delete pod -n openshift-image-registry -l docker-registry=default
+```
+
+---
+
+### Monitoring Stack
+
+#### Rollout the latest deployments and statefulsets
+```bash
+oc rollout -n openshift-monitoring restart statefulset/alertmanager-main
+oc rollout -n openshift-monitoring restart statefulset/prometheus-k8s
+oc rollout -n openshift-monitoring restart deployment/grafana
+oc rollout -n openshift-monitoring restart deployment/kube-state-metrics
+oc rollout -n openshift-monitoring restart deployment/openshift-state-metrics
+oc rollout -n openshift-monitoring restart deployment/prometheus-adapter
+oc rollout -n openshift-monitoring restart deployment/telemeter-client
+oc rollout -n openshift-monitoring restart deployment/thanos-querier
+```
+
+#### Delete monitoring stack pods to force reconciliation
+```bash
+oc delete pod -n openshift-monitoring -l app=alertmanager
+oc delete pod -n openshift-monitoring -l app=prometheus
+oc delete pod -n openshift-monitoring -l app=grafana
+oc delete pod -n openshift-monitoring -l app.kubernetes.io/name=kube-state-metrics
+oc delete pod -n openshift-monitoring -l k8s-app=openshift-state-metrics
+oc delete pod -n openshift-monitoring -l name=prometheus-adapter
+oc delete pod -n openshift-monitoring -l k8s-app=telemeter-client
+oc delete pod -n openshift-monitoring -l app.kubernetes.io/component=query-layer
+```
+
+---
+
+### List All Container Images
+
+#### List all container images running in a cluster
+```bash
+oc get pods -A -o go-template --template='{{range .items}}{{range .spec.containers}}{{printf "%s\\n" .image -}} {{end}}{{end}}' | sort -u | uniq
+```
+
+#### List all container images stored in a cluster
+```bash
+for node in $(oc get nodes -o name); do
+  oc debug ${node} -- chroot /host sh -c 'crictl images -o json' 2>/dev/null | jq -r .images[].repoTags[];
+done | sort -u
+```
+
+---
+
+## **Cluster Version**
+
+### Switch Cluster Version Channel
+```bash
+oc patch \
+  --patch='{"spec": {"channel": "prerelease-4.1"}}' \
+  --type=merge \
+  clusterversion/version
+```
+
+---
+
+### Unmanage Operators
+
+#### Retrieve current overrides
+```bash
+oc get -o json clusterversion version | jq .spec.overrides
+```
+
+#### Add a `ComponentOverride` to set the network operator unmanaged
+1. Extract the operator definition:
+   ```bash
+   head -n5 /tmp/mystuff/0000_07_cluster-network-operator_03_daemonset.yaml
+   ```
+   Example:
+   ```yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: network-operator
+     namespace: openshift-network-operator
+   ```
+
+2. Create the patch YAML file:
+   If no overrides exist:
+   ```yaml
+   - op: add
+     path: /spec/overrides
+     value:
+     - kind: Deployment
+       group: apps
+       name: network-operator
+       namespace: openshift-network-operator
+       unmanaged: true
+   ```
+   If overrides already exist:
+   ```yaml
+   - op: add
+     path: /spec/overrides/-
+     value:
+     - kind: Deployment
+       group: apps
+       name: network-operator
+       namespace: openshift-network-operator
+       unmanaged: true
+   ```
+
+3. Apply the patch:
+   ```bash
+   oc patch clusterversion version --type json -p "$(cat version-patch.yaml)"
+   ```
+
+#### Verify
+```bash
+oc get -o json clusterversion version | jq .spec.overrides
+```
+
+---
+
+### Disabling the Cluster Version Operator
+```bash
+oc scale --replicas 0 -n openshift-cluster-version deployments/cluster-version-operator
+```
+
+---
+
 ## **OpenShift Container Platform Troubleshooting**
 
 ### Inspect all resources in a namespace
