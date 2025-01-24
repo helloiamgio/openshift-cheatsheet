@@ -1,6 +1,6 @@
 # OpenShift Cheat Sheet
 
-![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/ocp.gif)
+![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/architecture_overview.png)
 
 ## **Login and Configuration**
 
