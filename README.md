@@ -2,6 +2,8 @@
 
 ![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/architecture_overview.png)
 
+https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/developer-cli-commands.html
+
 ## **Login and Configuration**
 
 ### Login with a user
