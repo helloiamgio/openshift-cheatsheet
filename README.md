@@ -1,1 +1,416 @@
-# openshift-cheatsheet
+# OpenShift Cheat Sheet
+
+## **Login and Configuration**
+
+### Login with a user
+```bash
+oc login https://192.168.99.100:8443 -u developer -p developer
+```
+
+### Login as system admin
+```bash
+oc login -u system:admin
+```
+
+### User Information
+```bash
+oc whoami
+```
+
+### View your configuration
+```bash
+oc config view
+```
+
+### Update the current context to have users login to the desired namespace
+```bash
+oc config set-context `oc config current-context` --namespace=<project_name>
+```
+
+### List OAuth Access Tokens
+```bash
+oc get useroauthaccesstokens
+```
+
+---
+
+## **Basic Commands**
+
+### Create a new app from a GitHub Repository
+```bash
+oc new-app https://github.com/sclorg/cakephp-ex
+```
+
+### New app from a different branch
+```bash
+oc new-app --name=html-dev nginx:1.10~https://github.com/joe-speedboat/openshift.html.devops.git#mybranch
+```
+
+### Create objects from a file
+```bash
+oc create -f myobject.yaml -n myproject
+```
+
+### Delete objects contained in a file
+```bash
+oc delete -f myobject.yaml -n myproject
+```
+
+### Create or merge objects from a file
+```bash
+oc apply -f myobject.yaml -n myproject
+```
+
+### Update existing object
+```bash
+oc patch svc mysvc --type merge --patch '{"spec":{"ports":[{"port": 8080, "targetPort": 5000}]}}'
+```
+
+### Monitor Pod status
+```bash
+watch oc get pods
+```
+
+### Get a Specific Item (podIP) using a Go template
+```bash
+oc get pod example-pod-2 --template='{{.status.podIP}}'
+```
+
+### Gather information on a project's pod deployment with node information
+```bash
+oc get pods -o wide
+```
+
+### Hide inactive Pods
+```bash
+oc get pods --show-all=false
+```
+
+### Display all resources
+```bash
+oc get all,secret,configmap
+```
+
+### Get the OpenShift Console Address
+```bash
+oc get -n openshift-console route console
+```
+
+### Get the Pod name from the Selector and rsh into it
+```bash
+POD=$(oc get pods -l app=myapp -o name) oc rsh -n $POD
+```
+
+### Execute a single command in a running pod
+```bash
+oc exec $POD $COMMAND
+```
+
+### Create a pod for the container image "fedora" and execute commands with it
+```bash
+oc run fedora-pod --image=fedora --restart=Never --command -- sleep infinity
+```
+
+### Copy from local folder byteman-4.0.12 to Pod wildfly-basic-1-mrlt5 under the folder /opt/wildfly
+```bash
+oc cp ./byteman-4.0.12 wildfly-basic-1-mrlt5:/opt/wildfly
+```
+
+---
+
+## **How to Manage Deployments**
+
+### Manual deployment
+```bash
+oc rollout latest ruby-ex
+```
+
+### Pause automatic deployment rollout
+```bash
+oc rollout pause dc $DEPLOYMENT
+```
+
+### Resume automatic deployment rollout
+```bash
+oc rollout resume dc $DEPLOYMENT
+```
+
+### Define resource requests and limits in DeploymentConfig
+```bash
+oc set resources deployment nginx --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=256Mi
+```
+
+### Define livenessProbe and readinessProbe in DeploymentConfig
+```bash
+oc set probe dc/nginx --readiness --get-url=http://:8080/healthz --initial-delay-seconds=10
+oc set probe dc/nginx --liveness --get-url=http://:8080/healthz --initial-delay-seconds=10
+```
+
+### Scale the number of Pods to 2
+```bash
+oc scale dc/nginx --replicas=2
+```
+
+### Define Horizontal Pod Autoscaler (HPA)
+```bash
+oc autoscale dc foo --min=2 --max=4 --cpu-percent=10
+```
+
+---
+
+## **Managing Routes**
+
+### Create a route
+```bash
+oc expose service ruby-ex
+```
+
+### Create Route and expose it through a custom Hostname
+```bash
+oc expose service ruby-ex --hostname=<custom-hostname>
+```
+
+### Read the Route Host attribute
+```bash
+oc get route my-route -o jsonpath --template="{.spec.host}"
+```
+
+### Forward traffic from pod "myphp" from 8080 to local 8080
+```bash
+oc port-forward pod/myphp 8080:8080
+```
+
+---
+
+## **Managing Services**
+
+### Make a service idle. When the service is next accessed it will automatically boot up the pods again
+```bash
+oc idle ruby-ex
+```
+
+### Read a Service IP
+```bash
+oc get services rook-ceph-mon-a --template='{{.spec.clusterIP}}'
+```
+
+---
+
+## **Resource Usage**
+
+### List the memory and CPU usage of all pods in the cluster
+```bash
+oc adm top pods -A --sum
+```
+
+### List the resource usage of the containers in the pod "mypod" in the "example" namespace
+```bash
+oc adm top pods mypod -n example --containers
+```
+
+### Resource consumption for the node
+```bash
+oc adm top node
+```
+
+### List all resources, their status, and their types in the "example" namespace
+```bash
+oc get all -n example --show-kind
+```
+
+### Displays the resource consumption for each container running on the node (requires "cri-tools")
+```bash
+crictl stats
+```
+
+---
+
+## **Clean up Resources**
+
+### Delete all resources
+```bash
+oc delete all --all
+```
+
+### Delete resources for one specific app
+```bash
+oc delete services -l app=ruby-ex
+oc delete all -l app=ruby-ex
+```
+
+### Clean up old docker images on nodes
+
+#### Keeping up to three tag revisions and resources younger than sixty minutes
+```bash
+oc adm prune images --keep-tag-revisions=3 --keep-younger-than=60m
+```
+
+#### Pruning every image that exceeds defined limits
+```bash
+oc adm prune images --prune-over-size-limit
+```
+
+---
+
+## **Jobs**
+
+### Create a simple Job
+```bash
+kubectl create job hello --image=alpine -- echo "Hello World"
+```
+
+### Create a CronJob that prints "Hello World" every minute
+```bash
+kubectl create cronjob hello --image=alpine --schedule="*/1 * * * *" -- echo "Hello World"
+```
+
+---
+
+## **OpenShift Container Platform Troubleshooting**
+
+### Inspect all resources in a namespace
+```bash
+oc adm inspect ns/mynamespace
+```
+
+### Run cluster diagnostics
+```bash
+oc adm diagnostics
+```
+
+### Collect must-gather
+```bash
+oc adm must-gather
+```
+
+### Check status of the current project
+```bash
+oc status
+```
+
+### Get events for a project sorted by timestamp
+```bash
+oc get events --sort-by=.metadata.creationTimestamp
+```
+
+### Get events of type Warning
+```bash
+oc get ev --field-selector type=Warning -o jsonpath='{.items[].message}{"\n"}'
+```
+
+### Logs management
+
+#### Get the logs of a specific pod
+```bash
+oc logs myrunning-pod-2-fdthn
+```
+
+#### Follow the logs of a specific pod
+```bash
+oc logs -f myrunning-pod-2-fdthn
+```
+
+#### Tail the logs of a specific pod
+```bash
+oc logs myrunning-pod-2-fdthn --tail=50
+```
+
+#### Check the integrated Docker registry logs
+```bash
+oc logs docker-registry-n-{xxxxx} -n default | less
+```
+
+### Create a temporary namespace to debug the node
+```bash
+oc debug node/master01
+```
+
+---
+
+## **Security**
+
+### Create a secret from the CLI
+```bash
+oc create secret generic oia-secret --from-literal=username=myuser \
+--from-literal=password=mypassword
+```
+
+### Use secret in deployment env
+```bash
+oc set env deployment/ --from secret/oia-secret
+```
+
+### Mount the Secret on a Volume
+```bash
+oc set volumes dc/myapp --add --name=secret-volume --mount-path=/opt/app-root/ \
+--secret-name=oia-secret
+```
+
+### Show SCC and add policy
+```bash
+oc get pods -A -o custom-columns="NAME:.metadata.name,SCC:.metadata.annotations.openshift\.io/scc"
+oc get pods -o custom-columns="NAME:.metadata.name,SECURITY_CONTEXT:.spec.securityContext"
+
+oc get deployment <DEPLOY> -n <NAMESPACE> -o yaml | oc adm policy scc-subject-review -f -
+oc get pod <POD> -o yaml | oc adm policy scc-subject-review -f -
+
+oc adm policy add-scc-to-user hostmount-anyuid -z default
+
+oc get scc -o custom-columns=Name:.metadata.name,Users:.users,Priority:.priority
+```
+
+---
+
+## **Managing User Roles**
+
+### Add a role to a user
+```bash
+oc adm policy add-role-to-user admin oia -n python
+```
+
+### Add a cluster role to a user
+```bash
+oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:monitoring:default
+```
+
+### Add a security context constraint (SCC) to a user
+```bash
+oc adm policy add-scc-to-user anyuid -z default
+```
+
+---
+
+## **Miscellaneous Commands**
+
+### Manage node state
+```bash
+oc adm manage node <node> --schedulable=false
+```
+
+### List installed operators
+```bash
+oc get csv
+```
+
+### Export resources as a template
+```bash
+oc export is,bc,dc,svc --as-template=app.yaml
+```
+
+### Show user in prompt
+```bash
+function ps1(){
+  export PS1='[\u@\h($(oc whoami -c 2>/dev/null|cut -d/ -f3,1)) \W]\$ '
+}
+```
+
+### Backup OpenShift objects
+```bash
+oc get all --all-namespaces --no-headers=true | awk '{print $1","$2}' | while read obj; do
+  NS=$(echo $obj | cut -d, -f1)
+  OBJ=$(echo $obj | cut -d, -f2)
+  FILE=$(echo $obj | sed 's/\//-/g;s/,/-/g')
+  echo $NS $OBJ $FILE
+  oc export -n $NS $OBJ -o yaml > $FILE.yml
+done
+```
