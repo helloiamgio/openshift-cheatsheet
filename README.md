@@ -24,6 +24,12 @@ oc login -u system:admin
 ### User Information
 ```bash
 oc whoami
+oc whoami --show-console
+oc whoami --show-server
+
+oc cluster-info
+
+oc cluster-info dump
 ```
 
 ### View your configuration
@@ -286,7 +292,15 @@ crictl stats
 ### Delete Completed Pods
 ```bash
 oc delete pod --field-selector=status.phase==Succeeded --all-namespaces
+oc get pods --all-namespaces |  awk '{if ($4 == "Completed") system ("oc delete pod " $2 " -n " $1 )}'
+
+oc delete pod --field-selector=status.phase==Failed --all-namespaces
+oc delete pod --field-selector=status.phase==Pending --all-namespaces
+oc delete pod --field-selector=status.phase==Evicted --all-namespaces
+oc get pods --all-namespaces |  awk '{if ($4 != "Running") system ("oc delete pod " $2 " -n " $1 )}'
 ```
+
+
 
 ### Change the image garbage collection (GC) thresholds
 Modify kubelet GC settings:
