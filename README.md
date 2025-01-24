@@ -1003,6 +1003,100 @@ oc patch subscription my-operator -n openshift-operators --type merge --patch '{
 
 ---
 
+## **Pull Secrets**
+
+### Create a Pull Secret
+Create a pull secret to authenticate with an external container registry:
+```bash
+oc create secret docker-registry my-pull-secret \
+  --docker-server=<registry-server> \
+  --docker-username=<username> \
+  --docker-password=<password> \
+  --docker-email=<email>
+```
+
+### Link a Pull Secret to a ServiceAccount
+```bash
+oc secrets link default my-pull-secret --for=pull
+```
+
+### View Linked Secrets for a ServiceAccount
+```bash
+oc get serviceaccount default -o yaml
+```
+
+### Update the Global Pull Secret
+1. Edit the pull secret:
+   ```bash
+   oc edit secret pull-secret -n openshift-config
+   ```
+2. Add the credentials for the desired registry in the `auths` section.
+
+### Add Credentials to a Namespaced Secret
+Create a new secret with updated credentials:
+```bash
+oc create secret docker-registry my-namespace-pull-secret \
+  --docker-server=<registry-server> \
+  --docker-username=<username> \
+  --docker-password=<password> \
+  --docker-email=<email> -n mynamespace
+```
+Link the new secret to a service account:
+```bash
+oc secrets link my-serviceaccount my-namespace-pull-secret --for=pull -n mynamespace
+```
+
+---
+
+## **Registries**
+
+### List Images in the Internal Registry
+```bash
+oc get is -A
+```
+
+### Expose the Internal Registry Externally
+```bash
+oc patch configs.imageregistry.operator.openshift.io/cluster \
+  --type merge \
+  --patch '{"spec":{"defaultRoute":true}}'
+```
+Retrieve the route:
+```bash
+oc get route default-route -n openshift-image-registry
+```
+
+### Mirror an External Image to the Internal Registry
+```bash
+oc image mirror docker.io/library/nginx:latest \
+  image-registry.openshift-image-registry.svc:5000/myproject/nginx:latest
+```
+
+### Set Registry Resource Limits
+```bash
+oc patch configs.imageregistry.operator.openshift.io/cluster \
+  --type merge \
+  --patch '{"spec":{"resources":{"requests":{"memory":"1Gi"},"limits":{"memory":"2Gi"}}}}'
+```
+
+### Prune Old Images
+```bash
+oc adm prune images --confirm
+```
+
+### Force Garbage Collection on the Internal Registry
+```bash
+oc patch configs.imageregistry.operator.openshift.io/cluster \
+  --type merge \
+  --patch '{"spec":{"managementState":"Managed"}}'
+```
+Run garbage collection:
+```bash
+oc exec -n openshift-image-registry -it $(oc get pods -n openshift-image-registry -l docker-registry=default -o jsonpath='{.items[0].metadata.name}') -- registry garbage-collect /config.yml
+```
+
+---
+
 ## **OpenShift Container Platform Troubleshooting**
 
 ### Inspect all resources in a namespace
