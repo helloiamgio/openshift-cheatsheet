@@ -13,7 +13,7 @@ oc completion bash >>/etc/bash_completion.d/oc_completion
 
 ### Login with a user
 ```bash
-oc login https://192.168.99.100:8443 -u developer -p developer
+oc login https://console-openshift-console.apps-crc.testing:8443 -u developer -p developer
 ```
 
 ### Login as system admin
