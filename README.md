@@ -379,6 +379,109 @@ oc delete pod -n openshift-ingress -l ingresscontroller.operator.openshift.io/de
 
 ---
 
+## **Identity Providers**
+
+### Add an HTPasswd Identity Provider
+Create a secret with the htpasswd file:
+```bash
+oc create secret generic htpass-secret --from-file=htpasswd=/path/to/htpasswd -n openshift-config
+```
+
+Patch the OAuth resource to add the htpasswd provider:
+```yaml
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+  - name: my_htpasswd_provider
+    mappingMethod: claim
+    type: HTPasswd
+    htpasswd:
+      fileData:
+        name: htpass-secret
+```
+Apply the configuration:
+```bash
+oc apply -f oauth.yaml
+```
+
+### Add a GitHub Identity Provider
+Create a GitHub OAuth client:
+```bash
+oc create secret generic github-secret --from-literal=clientSecret=<your-client-secret> -n openshift-config
+```
+
+Patch the OAuth resource to add the GitHub provider:
+```yaml
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+  - name: github
+    mappingMethod: claim
+    type: GitHub
+    github:
+      clientID: <your-client-id>
+      clientSecret:
+        name: github-secret
+      organizations:
+      - my-org
+```
+Apply the configuration:
+```bash
+oc apply -f oauth.yaml
+```
+
+---
+
+## **Images**
+
+### List All Images in the Cluster
+```bash
+oc get images
+```
+
+### Import an Image from an External Registry
+```bash
+oc import-image myimage:latest --from=docker.io/library/myimage:latest --confirm
+```
+
+### Tag an Image for Internal Use
+```bash
+oc tag myimage:latest myproject/myimage:stable
+```
+
+### Prune Unused Images
+```bash
+oc adm prune images --confirm
+```
+
+### Build an Image from Source Code
+```bash
+oc new-build https://github.com/openshift/ruby-hello-world.git --name=ruby-app
+```
+
+### Start a Build
+```bash
+oc start-build ruby-app
+```
+
+### Monitor Build Logs
+```bash
+oc logs -f bc/ruby-app
+```
+
+### Deploy an Image
+```bash
+oc new-app myimage:stable -n myproject
+```
+
+---
+
 ### Image Registry
 
 #### Rollout the latest deployment
