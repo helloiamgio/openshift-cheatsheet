@@ -447,6 +447,32 @@ oc get csr -o name | xargs oc adm certificate approve
 
 ---
 
+## **API**
+
+### API Resources
+List all API resources:
+```bash
+oc api-resources
+```
+
+### API resources per API group
+```bash
+oc api-resources --api-group config.openshift.io -o name
+oc api-resources --api-group machineconfiguration.openshift.io -o name
+```
+
+### Explain resources
+Explain resource details:
+```bash
+oc explain pods.spec.containers
+```
+For a specific API group:
+```bash
+oc explain --api-version=config.openshift.io/v1 scheduler
+```
+
+---
+
 ## **Miscellaneous Commands**
 
 ### Manage node state
