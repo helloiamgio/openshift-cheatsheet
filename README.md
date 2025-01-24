@@ -915,6 +915,94 @@ oc apply -f custom-app-monitor.yaml
 
 ---
 
+## **Operator-Lifecycle-Manager (OLM)**
+
+### List Installed Operators
+```bash
+oc get csv -n openshift-operators
+```
+
+### Install an Operator
+Create a subscription for the operator:
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: my-operator
+  namespace: openshift-operators
+spec:
+  channel: stable
+  name: my-operator
+  source: operatorhubio-catalog
+  sourceNamespace: openshift-marketplace
+```
+Apply the subscription:
+```bash
+oc apply -f subscription.yaml
+```
+
+### Check the Status of an Operator
+```bash
+oc get csv -n openshift-operators
+```
+
+### Uninstall an Operator
+Delete the subscription and CSV:
+```bash
+oc delete subscription my-operator -n openshift-operators
+oc delete csv my-operator.v1.0.0 -n openshift-operators
+```
+
+### Approve a Manual InstallPlan
+```bash
+oc patch installplan install-xxxxx -n openshift-operators --type merge --patch '{"spec": {"approved": true}}'
+```
+
+### View Operator Logs
+Find the operator's pod and view logs:
+```bash
+oc get pods -n openshift-operators
+oc logs my-operator-pod -n openshift-operators
+```
+
+### Create a Custom Resource for an Operator
+Example YAML:
+```yaml
+apiVersion: app.example.com/v1
+kind: ExampleApp
+metadata:
+  name: example-app
+  namespace: myproject
+spec:
+  size: 3
+```
+Apply the custom resource:
+```bash
+oc apply -f example-app.yaml
+```
+
+### Check Operator Conditions
+```bash
+oc get csv my-operator.v1.0.0 -n openshift-operators -o jsonpath='{.status.conditions}'
+```
+
+### List Available Operators in the Marketplace
+```bash
+oc get packagemanifests -n openshift-marketplace
+```
+
+### Describe a Specific Operator
+```bash
+oc describe packagemanifest my-operator -n openshift-marketplace
+```
+
+### Update an Operator Subscription
+```bash
+oc patch subscription my-operator -n openshift-operators --type merge --patch '{"spec": {"channel": "stable"}}'
+```
+
+---
+
 ## **OpenShift Container Platform Troubleshooting**
 
 ### Inspect all resources in a namespace
