@@ -183,6 +183,16 @@ oc scale deployment my-deployment --replicas=3
 oc new-app my-image-stream
 ```
 
+### List resource name by selector
+```bash
+oc get gw -A -o json | jq -r '.items[] | select(.spec.selector.istio == "backend-ingressgateway") | .metadata.name'
+```
+
+### List nodeSelector per deployment
+```bash
+oc get deployments -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name): \(.spec.template.spec.nodeSelector)"'
+```
+
 ### Manage Kubeconfig Files
 Switch kubeconfig contexts:
 ```bash
