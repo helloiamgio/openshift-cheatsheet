@@ -961,7 +961,7 @@ oc apply -f custom-app-monitor.yaml
 ### List Installed Operators
 ```bash
 oc get csv -n openshift-operators
-oc get csv -A -o custom-columns=NAME:.metadata.name,DISPLAY:.spec.displayName,VERSION:.spec.version | sort | uniq
+oc get csv -A --no-headers -o custom-columns=NAME:.metadata.name,DISPLAY:.spec.displayName,VERSION:.spec.version | sort | uniq
 ```
 
 ### Install an Operator
