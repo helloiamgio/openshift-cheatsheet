@@ -602,6 +602,25 @@ oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:moni
 oc adm policy add-scc-to-user anyuid -z default
 ```
 
+### Verify user permission
+```bash
+oc auth can-i command --as user_to_impersonate \
+ --as-group group_to_impersonate
+
+oc auth can-i get pods -A \
+ --as system:serviceaccount:auth-tls:health-robot
+
+oc auth can-i create project -A \
+ --as system:serviceaccount:auth-tls:health-robot
+
+oc auth can-i get users -A \
+ --as admin-backdoor --as-group backdoor-administrators
+```
+
+### Verify user permission
+```bash
+oc get nodes --as admin
+```
 
 ### Show SCC and add policy
 ```bash
