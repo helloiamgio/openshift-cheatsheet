@@ -1442,8 +1442,12 @@ oc set volumes dc/myapp --add --name=secret-volume --mount-path=/opt/app-root/ \
 --secret-name=oia-secret
 ```
 
----
+### List Istio Authorization Policies details (extract to csv)
+```bash
+oc get authorizationpolicies.security.istio.io --all-namespaces -o json | jq -r '.items[] | [.metadata.namespace, .metadata.name, .spec.action, (.spec.rules[]?.from[]?.source.principals[]? // "N/A"), (.spec.rules[]?.from[]?.source.namespaces[]? // "N/A"), (.spec.rules[]?.to[]?.operation.paths[]? // "N/A")] | @csv' > authorizationpolicies.csv
+```
 
+---
 
 ## **Certificates**
 
