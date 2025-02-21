@@ -576,6 +576,12 @@ select(.kind == "Group") |
 "NAMESPACE: \($binding.metadata.namespace // "Cluster-wide") KIND: \($binding.kind) NAME: \($binding.metadata.name) ROLE: \($binding.roleRef.name) GROUP: \(.name)"'
 ```
 
+### List all users/groups with cluster-admin rights 
+```bash
+oc get clusterrolebindings -o json | jq '.items[] | select(.roleRef.name=="clusteradmin")' | jq '.subjects[0].name'
+```
+
+
 ### Add a role to a user
 ```bash
 oc adm policy add-role-to-user admin oia -n python
