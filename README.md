@@ -578,9 +578,14 @@ select(.kind == "Group") |
 
 ### List all users/groups with cluster-admin rights 
 ```bash
-oc get clusterrolebindings -o json | jq '.items[] | select(.roleRef.name=="clusteradmin")' | jq '.subjects[0].name'
+oc get clusterrolebindings -o json | jq '.items[] | select(.roleRef.name=="cluster-admin")' | jq '.subjects[0].name'
 ```
 
+### List all cluster-role / role 
+```bash
+oc get clusterroles -o json | jq '.items[].metadata.name'
+oc get roles -o json | jq '.items[].metadata.name'
+```
 
 ### Add a role to a user
 ```bash
