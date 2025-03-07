@@ -1474,7 +1474,7 @@ oc set volumes dc/myapp --add --name=secret-volume --mount-path=/opt/app-root/ \
 
 ### List Istio Authorization Policies details (extract to csv)
 ```bash
-(echo "Namespace,Name,Action,Principals,Namespaces,Paths"; oc get authorizationpolicies.security.istio.io --all-namespaces -o json | jq -r '.items[] | [.metadata.namespace, .metadata.name, .spec.action, (.spec.rules[]?.from[]?.source.principals[]? // "N/A"), (.spec.rules[]?.from[]?.source.namespaces[]? // "N/A"), (.spec.rules[]?.to[]?.operation.paths[]? // "N/A")] | @csv') > authorizationpolicies.csv
+(echo "Namespace,Name,Action,Principals,Namespaces,Paths"; oc get authorizationpolicies.security.istio.io --all-namespaces -o json | jq -r '.items[] | [.metadata.namespace, .metadata.name, .spec.action // "N/A", (.spec.rules[]?.from[]?.source.principals[]? // "N/A"), (if (.spec.rules[]?.from[]?.source.namespaces | type) == "array" then (.spec.rules[]?.from[]?.source.namespaces | join(",")) else .spec.rules[]?.from[]?.source.namespaces end // "N/A"), (if (.spec.rules[]?.to[]?.operation.paths | type) == "array" then (.spec.rules[]?.to[]?.operation.paths | join(",")) else .spec.rules[]?.to[]?.operation.paths end // "N/A")] | @csv') > authorizationpolicies.csv
 ```
 
 ---
