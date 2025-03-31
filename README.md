@@ -1450,6 +1450,19 @@ Drain and reboot a node:
 oc adm drain node-name --ignore-daemonsets --force
 reboot
 ```
+### ETCD
+Check the etcd status:
+```bash
+oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl member list -w table
+oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint health --cluster
+oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w table
+oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w json | jq '.[] | ((.Status.dbSize - .Status.dbSizeInUse)/.Status.dbSize)*100'
+```
+Check the etcd objects:
+```bash
+export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd --field-selector="status.phase==Running" -o jsonpath="{.items[0].metadata.name}")
+oc exec -n openshift-etcd -c etcdctl ${ETCD_POD_NAME} -- sh -c "etcdctl get / --prefix --keys-only  | grep -oE '^/[a-z|.]+/[a-z|.|8]*' | sort | uniq -c | sort -rn" | while read KEY; do printf "$KEY\t" && oc exec -n openshift-etcd ${ETCD_POD_NAME} -c etcdctl -- etcdctl get ${KEY##* } --prefix --write-out=json | jq '[.kvs[].value | length] | add ' | numfmt --to=iec ; done | sort -k3 -hr | column -t
+```
 
 ---
 
