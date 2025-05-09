@@ -153,6 +153,11 @@ oc get nodes
 oc describe node <node-name>
 ```
 
+### View Nodes allocation
+```bash
+for i in $(oc get nodes | awk '{print $1}'); do echo "==== $i ====";oc describe node $i 2> /dev/null | grep -A10 Allocated; echo; done
+```
+
 ### Get Logs for a Pod
 ```bash
 oc logs my-pod
