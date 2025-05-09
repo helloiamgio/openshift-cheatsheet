@@ -937,6 +937,11 @@ Apply the configuration:
 oc apply -f kubelet-config.yaml
 ```
 
+### Update MCP maxUnavailable
+```bash
+oc patch --type merge machineconfigpool/<machineconfigpool> -p '{"spec":{"maxUnavailable":<value>}}'
+```
+
 ---
 
 ## **Monitoring**
