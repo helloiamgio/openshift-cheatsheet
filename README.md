@@ -32,6 +32,7 @@ https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/d
 - [Certificates](#certificates)
 - [API](#api)
 - [Miscellaneous Commands](#miscellaneous-commands)
+- [ODF](#odf)
 
 ---
 ## **Login and Configuration**
@@ -1594,3 +1595,57 @@ oc get all --all-namespaces --no-headers=true | awk '{print $1","$2}' | while re
   oc export -n $NS $OBJ -o yaml > $FILE.yml
 done
 ```
+
+---
+## **ODF**
+---
+
+### Script to patch CephTools 
+
+```bash
+ceph status
+ceph osd status
+ceph osd pool ls
+ceph df
+rados df
+
+#!/bin/bash
+if [ "$1" == "off" ]; then
+    oc patch OCSInitialization/ocsinit -n openshift-storage \
+      --type=merge -p='{"spec":{ "enableCephTools": false}}'
+    sleep 3
+    echo "removing any existing toolbox pod"
+    oc delete pods -n openshift-storage -l app=rook-ceph-tools
+else
+    oc patch OCSInitialization/ocsinit -n openshift-storage \
+      --type=merge -p='{"spec":{ "enableCephTools": true}}'
+
+    TOOLS_POD=""
+    echo -n "waiting for ceph tools pod to schedule "
+    until [ -n "$TOOLS_POD" ]; do
+        echo -n "."
+        sleep 5
+        TOOLS_POD=$(oc get pod -n openshift-storage -l app=rook-ceph-tools -o name)
+    done
+    echo "$TOOLS_POD"
+
+    echo "waiting for ceph tools pod to startup"
+    oc wait $TOOLS_POD --for=condition=Ready --timeout=300s  -n openshift-storage
+
+    echo "connecting to ceph toolbox"
+    oc rsh -n openshift-storage $TOOLS_POD
+fi
+```
+
+Ceph Status
+```bash
+oc exec -it $(oc get pod -n openshift-storage -l app=rook-ceph-operator -o name) -n openshift-storage -- ceph status -c /var/lib/rook/openshift-storage/openshift-storage.config
+```
+
+Ceph Time Sync Status
+```bash
+oc exec -it $(oc get pod -n openshift-storage -l app=rook-ceph-operator -o name) -n openshift-storage -- ceph time-sync-status -c /var/lib/rook/openshift-storage/openshift-storage.config
+```
+
+
+
