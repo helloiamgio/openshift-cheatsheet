@@ -1567,6 +1567,10 @@ oc explain --api-version=config.openshift.io/v1 scheduler
 ```bash
 oc adm manage node <node> --schedulable=false
 ```
+### Get VSphere config
+```bash
+oc  get cm cloud-provider-config -o json -n openshift-config |  jq -r .data.config
+```
 
 ### List installed operators
 ```bash
