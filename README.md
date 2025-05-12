@@ -1656,6 +1656,13 @@ oc exec -it $(oc get pod -n openshift-storage -l app=rook-ceph-operator -o name)
 oc exec -it $(oc get pod -n openshift-storage -l app=rook-ceph-operator -o name) -n openshift-storage -- ceph time-sync-status -c /var/lib/rook/openshift-storage/openshift-storage.config
 ```
 
+### StorageCluster Status
+```bash
+oc get storagecluster -n openshift-storage
+```
+
+
+
 
 
 
