@@ -947,6 +947,13 @@ oc apply -f kubelet-config.yaml
 oc patch --type merge machineconfigpool/<machineconfigpool> -p '{"spec":{"maxUnavailable":<value>}}'
 ```
 
+
+### Pause/Unpause MCP 
+```bash
+oc patch mcp/<mcp_name> --patch '{"spec":{"paused":true}}' --type=merge
+oc patch mcp/<mcp_name> --patch '{"spec":{"paused":false}}' --type=merge
+```
+
 ---
 
 ## **Monitoring**
