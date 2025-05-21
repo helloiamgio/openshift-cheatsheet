@@ -159,6 +159,11 @@ oc describe node <node-name>
 for i in $(oc get nodes | awk '{print $1}'); do echo "==== $i ====";oc describe node $i 2> /dev/null | grep -A10 Allocated; echo; done
 ```
 
+### View Nodes Taints
+```bash
+oc get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
+```
+
 ### Get Logs for a Pod
 ```bash
 oc logs my-pod
