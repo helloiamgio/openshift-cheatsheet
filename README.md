@@ -1481,10 +1481,137 @@ oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint health --
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w table
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w json | jq '.[] | ((.Status.dbSize - .Status.dbSizeInUse)/.Status.dbSize)*100'
 ```
+
 Check the etcd objects:
 ```bash
 export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd --field-selector="status.phase==Running" -o jsonpath="{.items[0].metadata.name}")
 oc exec -n openshift-etcd -c etcdctl ${ETCD_POD_NAME} -- sh -c "etcdctl get / --prefix --keys-only  | grep -oE '^/[a-z|.]+/[a-z|.|8]*' | sort | uniq -c | sort -rn" | while read KEY; do printf "$KEY\t" && oc exec -n openshift-etcd ${ETCD_POD_NAME} -c etcdctl -- etcdctl get ${KEY##* } --prefix --write-out=json | jq '[.kvs[].value | length] | add ' | numfmt --to=iec ; done | sort -k3 -hr | column -t
+```
+
+Backup ETCD shell:
+```bash
+cat <<EOF > backup_script.sh
+#!/bin/bash
+
+# Uso: ./backup_script.sh <Nome Cluster> <IP Master>
+
+if [ "\$#" -ne 2 ]; then
+    echo "Uso: \$0 <Nome Cluster> <IP Master>"
+    exit 1
+fi
+
+CLUSTER_NAME=\$1
+MASTER_IP=\$2
+BACKUP_PATH="/root/backup-etcd/\${CLUSTER_NAME}"
+
+/bin/echo [\$(date +"%F %T")] Starting \${CLUSTER_NAME} Backup... &>> /var/log/\${CLUSTER_NAME}-backup.log
+/bin/ssh -i /root/.ssh/ocp-acmac core@\${MASTER_IP} '/bin/sudo /usr/local/bin/cluster-backup.sh /home/core/backup && /bin/sudo /bin/find /home/core/backup -mtime +5 -delete && /bin/sudo /bin/chown -vR core:core /home/core/backup'
+/bin/rsync -av --delete -e "/bin/ssh -i /root/.ssh/ocp-acmac" core@\${MASTER_IP}:/home/core/backup \${BACKUP_PATH} &>> /var/log/\${CLUSTER_NAME}-backup.log
+/bin/echo [\$(date +"%F %T")] Terminated \${CLUSTER_NAME} Backup. &>> /var/log/\${CLUSTER_NAME}-backup.log
+EOF
+```
+
+Backup ETCD cronjob:
+```bash
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ocp-backup-etcd
+  labels:
+    app: openshift-backup
+  annotations:
+    openshift.io/node-selector: ''
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: openshift-backup
+  namespace: ocp-backup-etcd
+  labels:
+    app: openshift-backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-etcd-backup
+  labels:
+    app: openshift-backup
+rules:
+- apiGroups: [""] 
+  resources: 
+     - "nodes" 
+  verbs: ["get", "list"]
+- apiGroups: [""] 
+  resources: 
+     - "pods" 
+     - "pods/log" 
+  verbs: ["get", "list", "create", "delete", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: openshift-backup
+  labels:
+    app: openshift-backup
+subjects:
+  - kind: ServiceAccount
+    name: openshift-backup
+    namespace: ocp-backup-etcd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-etcd-backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-backup-privileged
+  namespace: ocp-backup-etcd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+- kind: ServiceAccount
+  name: openshift-backup
+  namespace: ocp-backup-etcd
+---
+kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: openshift-backup
+  namespace: ocp-backup-etcd
+  labels:
+    app: openshift-backup
+spec:
+  schedule: "56 23 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    metadata:
+      labels:
+        app: openshift-backup
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: openshift-backup
+        spec:
+          containers:
+            - name: backup
+              image: "registry.redhat.io/openshift4/ose-cli:v4.10"
+              command:
+                - "/bin/bash"
+                - "-c"
+                - oc get no -l node-role.kubernetes.io/master --no-headers -o name | xargs -I {} --  oc debug {} -- bash -c 'chroot /host sudo -E /usr/local/bin/cluster-backup.sh /home/core/backup/ && chroot /host sudo -E find /home/core/backup/ -type f -ctime +"2" -delete'
+          restartPolicy: "Never"
+          terminationGracePeriodSeconds: 30
+          activeDeadlineSeconds: 600
+          dnsPolicy: "ClusterFirst"
+          serviceAccountName: "openshift-backup"
+          serviceAccount: "openshift-backup"
 ```
 
 ---
