@@ -1757,6 +1757,19 @@ ceph osd pool ls
 ceph df
 rados df
 
+ceph health detail 
+ceph versions 
+ceph config dump 
+ceph osd df tree 
+ceph osd pool ls detail 
+ceph df 
+ceph osd dump 
+ceph pg dump 
+ceph report 
+ceph osd pool autoscale-status 
+ceph osd crush dump 
+
+
 #!/bin/bash
 if [ "$1" == "off" ]; then
     oc patch OCSInitialization/ocsinit -n openshift-storage \
