@@ -59,7 +59,7 @@ oc whoami
 oc whoami --show-console
 oc whoami --show-server
 
-oc cluster-info
+oc -info
 
 oc cluster-info dump
 ```
@@ -68,6 +68,15 @@ oc cluster-info dump
 ```bash
 oc config view
 ```
+
+### View your VSphere Credential [https://access.redhat.com/solutions/6677901]
+```bash
+oc get secret vsphere-creds -o yaml -n kube-system
+oc get cm cloud-provider-config -o yaml -n openshift-config
+oc get infrastructures.config.openshift.io -o yaml 
+```
+
+
 
 ### Update the current context to have users login to the desired namespace
 ```bash
