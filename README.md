@@ -1722,6 +1722,7 @@ oc explain --api-version=config.openshift.io/v1 scheduler
 ```bash
 oc adm manage node <node> --schedulable=false
 ```
+
 ### Get VSphere config
 ```bash
 oc  get cm cloud-provider-config -o json -n openshift-config |  jq -r .data.config
@@ -1753,6 +1754,11 @@ oc get all --all-namespaces --no-headers=true | awk '{print $1","$2}' | while re
   echo $NS $OBJ $FILE
   oc export -n $NS $OBJ -o yaml > $FILE.yml
 done
+```
+
+### Show machine-config-controller logs
+```bash
+oc logs -n openshift-machine-config-operator $(oc get pod -n openshift-machine-config-operator -o name | grep controller)
 ```
 
 ---
