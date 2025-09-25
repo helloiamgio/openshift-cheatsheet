@@ -477,6 +477,8 @@ crictl stats
 oc delete pod --field-selector=status.phase==Succeeded --all-namespaces
 oc get pods --all-namespaces |  awk '{if ($4 == "Completed") system ("oc delete pod " $2 " -n " $1 )}'
 
+read -p "Namespace: " ns; read -p "Stato (e.g. Error, Completed): " status; oc get pods -n "$ns" --no-headers | awk -v s="$status" '$3 == s { system("oc delete pod " $1 " -n " "'$ns'") }'
+
 oc delete pod --field-selector=status.phase==Failed --all-namespaces
 oc delete pod --field-selector=status.phase==Pending --all-namespaces
 oc delete pod --field-selector=status.phase==Evicted --all-namespaces
