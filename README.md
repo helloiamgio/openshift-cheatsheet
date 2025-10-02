@@ -1487,10 +1487,17 @@ reboot
 ### ETCD
 Check the etcd status:
 ```bash
+export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd -o jsonpath='{.items[0].metadata.name}')
+
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl member list -w table
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint health --cluster
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w table
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --cluster -w json | jq '.[] | ((.Status.dbSize - .Status.dbSizeInUse)/.Status.dbSize)*100'
+
+oc exec -n openshift-etcd -c etcd $ETCD_POD_NAME -- etcdctl alarm list
+oc exec -n openshift-etcd -c etcd $ETCD_POD_NAME -- etcdctl defrag
+
+oc logs -n openshift-etcd -c etcd $ETCD_POD_NAME --tail=500 | egrep -i 'fsync|slow|leader|timeout|alarm'
 ```
 
 Check the etcd objects:
@@ -1623,6 +1630,12 @@ spec:
           dnsPolicy: "ClusterFirst"
           serviceAccountName: "openshift-backup"
           serviceAccount: "openshift-backup"
+```
+
+API Server (correlazione con error budget):
+```bash
+oc -n openshift-kube-apiserver get pods
+oc -n openshift-kube-apiserver logs <pod-apiserver> --tail=500 | egrep -i 'slow|etcd|timeout'
 ```
 
 ---
