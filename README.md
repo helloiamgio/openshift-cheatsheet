@@ -1348,6 +1348,7 @@ oc status
 ### Get events for a project sorted by timestamp
 ```bash
 oc get events --sort-by=.metadata.creationTimestamp
+oc get events --sort-by='.lastTimestamp'
 ```
 
 ### Get events of type Warning
