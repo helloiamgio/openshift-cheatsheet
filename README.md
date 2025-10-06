@@ -821,7 +821,16 @@ done | sort -u
 
 ---
 
-## **Cluster Version**
+## **Cluster Upgrade**
+
+```bash
+oc get clusterversion
+oc adm upgrade          
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"stable-4.14"}}'
+oc adm upgrade --to=4.14.10
+watch oc get clusterversion
+oc get co               
+```
 
 ### Switch Cluster Version Channel
 ```bash
