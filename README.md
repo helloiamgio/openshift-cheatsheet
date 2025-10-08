@@ -1498,6 +1498,7 @@ reboot
 Check the etcd status:
 ```bash
 export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd -o jsonpath='{.items[0].metadata.name}')
+export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd --field-selector="status.phase==Running" -o jsonpath="{.items[0].metadata.name}")
 
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl member list -w table
 oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint health --cluster
@@ -1506,6 +1507,10 @@ oc exec -n openshift-etcd -c etcd ${ETCD_POD_NAME} -- etcdctl endpoint status --
 
 oc exec -n openshift-etcd -c etcd $ETCD_POD_NAME -- etcdctl alarm list
 oc exec -n openshift-etcd -c etcd $ETCD_POD_NAME -- etcdctl defrag
+
+oc exec -n openshift-etcd -c etcdctl ${ETCD_POD_NAME} -- sh -c "etcdctl get / --prefix --keys-only  | grep -oE '^/[a-z|.]+/[a-z|.|8]*' | sort | uniq -c | sort -rn" | while read KEY; do printf "$KEY\t" && oc exec -n openshift-etcd ${ETCD_POD_NAME} -c etcdctl -- etcdctl get ${KEY##* } --prefix --write-out=json | jq '[.kvs[].value | length] | add ' | numfmt --to=iec ; done | sort -k3 -hr | column -t
+
+for i in `oc get pods -n openshift-etcd | egrep -v "NAME|guard|Succeeded" | awk '{ print $1 }'`; do echo "-- $i"; oc logs $i -c etcd -n openshift-etcd 2>&1 | awk -v min=999 'function norm(p){split($0,a,",");gsub("[tok:\"]","",a[p]);if (a[p] ~ ".*[0-9]s")a[p]*=1000; return a[p]*=1} {if (NR==1) start=$1} /took too long/ {b=norm(5); if (tmin==0) tmin=b; if (b<tmin) tmin=b; if (b>tmax) tmax=b; tavg+=b; t++} /context deadline exceeded/ {d++} /finished scheduled compaction/ {b=norm(6); if (b<min) min=b; if (b>max) max=b; avg+=b; c++} ENDFILE{end=$1} END{if (t==0) t--; printf " Log range:\t\t%s - %s\n took too long:\ttotal %d - min %d - max %d - avg %d\n deadline exceeded:\t%d\n compaction times:\ttotal %d - min %d - max %d - avg %d\n",start,end,t,tmin,tmax,tavg/t,d,c,min,max,avg/c}'; done
 
 oc logs -n openshift-etcd -c etcd $ETCD_POD_NAME --tail=500 | egrep -i 'fsync|slow|leader|timeout|alarm'
 ```
