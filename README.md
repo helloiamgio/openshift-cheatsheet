@@ -1514,8 +1514,9 @@ for i in `oc get pods -n openshift-etcd | egrep -v "NAME|guard|Succeeded" | awk 
 
 oc logs -n openshift-etcd -c etcd $ETCD_POD_NAME --tail=500 | egrep -i 'fsync|slow|leader|timeout|alarm'
 
-$ mkdir etcd-metrics
-$ for etcd_pod in `oc get pods -l k8s-app=etcd -n openshift-etcd -o jsonpath='{.items[*].metadata.name}'`; do oc exec -it $etcd_pod -n "openshift-etcd" -c "etcdctl" -- sh -c 'curl --cert $ETCDCTL_CERT --key $ETCDCTL_KEY --cacert $ETCDCTL_CACERT https://localhost:2379/metrics' &> etcd-metrics/${etcd_pod}_metrics.txt;done
+Collect metrics:
+mkdir etcd-metrics
+for etcd_pod in `oc get pods -l k8s-app=etcd -n openshift-etcd -o jsonpath='{.items[*].metadata.name}'`; do oc exec -it $etcd_pod -n "openshift-etcd" -c "etcdctl" -- sh -c 'curl --cert $ETCDCTL_CERT --key $ETCDCTL_KEY --cacert $ETCDCTL_CACERT https://localhost:2379/metrics' &> etcd-metrics/${etcd_pod}_metrics.txt;done
 ```
 
 Check the etcd objects:
