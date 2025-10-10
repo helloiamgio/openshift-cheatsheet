@@ -28,6 +28,7 @@ https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/d
 - [Registries](#registries)
 - [OpenShift Container Platform Troubleshooting](#openshift-container-platform-troubleshooting)
 - [Troubleshooting](#troubleshooting)
+- [ETCD](#etcd)
 - [Security](#security)
 - [Certificates](#certificates)
 - [API](#api)
@@ -1494,7 +1495,7 @@ Drain and reboot a node:
 oc adm drain node-name --ignore-daemonsets --force
 reboot
 ```
-### ETCD
+## **ETCD**
 Check the etcd status:
 ```bash
 export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd -o jsonpath='{.items[0].metadata.name}')
