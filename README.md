@@ -471,7 +471,12 @@ crictl stats
 
 ---
 
-## **Clean up Resources**
+## **Clean up Non Running pods**
+
+```bash
+oc get pods -A -o wide | grep -v 'Runn\|Comp'
+oc get pods -A | grep -v 'Runn\|Comp' | grep openshift | awk 'system("oc delete pods "$2" -n "$1" --force --grace-period=0")'
+```
 
 ### Delete Completed Pods
 ```bash
