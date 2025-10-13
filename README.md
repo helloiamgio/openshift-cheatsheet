@@ -1500,6 +1500,13 @@ Drain and reboot a node:
 oc adm drain node-name --ignore-daemonsets --force
 reboot
 ```
+
+### Stato Kubelet sui nodi
+
+```bash
+oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+```
+
 ## **ETCD**
 Check the etcd status:
 ```bash
