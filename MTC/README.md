@@ -1,80 +1,102 @@
-# Migrazione OpenShift tra Datacenter con MTC e MinIO (Offline)
 
-## 🧩 Scenario
-Migrazione di un cluster **OpenShift 4.13 (vSphere IPI)** verso **OpenShift 4.18** in un **nuovo datacenter**, senza connettività diretta tra i due ambienti.  
-La migrazione avviene tramite **Migration Toolkit for Containers (MTC)** utilizzando **MinIO** come backend S3 locale per i backup applicativi e dei volumi persistenti.
+# 🧭 OpenShift Cluster Migration Guide (MTC + MinIO) — Online & Offline
+
+Questa guida descrive come migrare applicazioni, namespace e persistent volumes tra due cluster **OpenShift 4.x** usando **Migration Toolkit for Containers (MTC)**.  
+Copre entrambi gli scenari:
+1. **Migrazione Offline (con MinIO/S3)** → quando i due cluster NON hanno connettività diretta.
+2. **Migrazione Online (cluster connessi)** → quando i due cluster possono comunicare tra loro.
 
 ---
 
-## ⚙️ Architettura generale
+## 📘 1. Architettura Generale
 
-```text
-DATACENTER VECCHIO (OCP 4.13)
- ├─ Cluster OpenShift 4.13
- │   ├─ MTC Operator + Velero
- │   └─ MinIO (S3) → bucket: mtc-backup
- │        └─ Salva i backup MTC su PVC locale o NFS
- │
- └──> [Trasferimento offline del bucket (rsync, HDD, ecc.)]
- 
-DATACENTER NUOVO (OCP 4.18)
- ├─ Cluster OpenShift 4.18
- │   ├─ MTC Operator + Velero
- │   └─ MinIO (S3) → bucket copiato dal vecchio DC
- │
- └──> Ripristino risorse applicative e PV tramite MTC
- 
-[F5 switch del traffico verso il nuovo cluster]
+### Scenario A — Migrazione Offline (con MinIO/S3)
+
+```
++-----------------------+        +-------------------+        +-----------------------+
+|   OpenShift Source    |        |     MinIO/S3      |        |   OpenShift Target    |
+| (es. OCP 4.13 - DC1)  | <----> |  Object Storage   | <----> | (es. OCP 4.18 - DC2)  |
+|  mig-controller       |        |  (Persistente)    |        |  mig-controller       |
++-----------------------+        +-------------------+        +-----------------------+
+```
+
+### Scenario B — Migrazione Online (cluster connessi)
+
+```
++-----------------------+
+|   OpenShift Source    |
+| (es. OCP 4.13 - DC1)  |
+|  mig-controller       |
++----------┬------------+
+           │ TCP/443 (API)
+           ▼
++-----------------------+
+|   OpenShift Target    |
+| (es. OCP 4.18 - DC2)  |
+|  mig-controller       |
++-----------------------+
 ```
 
 ---
 
-## 🧱 Componenti principali
+## 🧩 2. Prerequisiti comuni
 
-| Componente | Descrizione |
-|-------------|-------------|
-| **MTC (Migration Toolkit for Containers)** | Tool ufficiale Red Hat per migrazione applicazioni e PV tra cluster OpenShift |
-| **Velero** | Strumento di backup/restore usato da MTC |
-| **MinIO** | Server object storage compatibile S3 usato per salvare i backup |
-| **F5** | Bilanciatore per lo switch del traffico verso il nuovo datacenter |
+| Requisito | Descrizione |
+|------------|-------------|
+| OpenShift | Versione 4.10+ (consigliato target ≥4.18) |
+| Autorizzazioni | Cluster-admin su entrambi i cluster |
+| Network | DNS e risoluzione reciproca per API, se online |
+| Storage | Accesso PV compatibile o S3 compatibile |
+| Tool | `oc`, `helm`, `kubectl`, `mtc` CLI opzionale |
 
 ---
 
-## 🧰 Installazione di MinIO (cluster sorgente e destinazione)
+## ☁️ 3. Installazione di MinIO (per scenario Offline)
 
-### 1️⃣ Namespace dedicato
+MinIO è uno storage S3-compatibile che permette di salvare i dati esportati da MTC.  
+Può essere installato **su una VM dedicata** o **direttamente nel cluster OpenShift sorgente o target**.
+
+### Opzione 1 — Deploy su VM esterna
+
+1. Scarica MinIO:
+```bash
+wget https://dl.min.io/server/minio/release/linux-amd64/minio
+chmod +x minio
+./minio server /data --console-address ":9001"
+```
+
+2. Crea utente e credenziali:
+```bash
+export MINIO_ROOT_USER=admin
+export MINIO_ROOT_PASSWORD=StrongPassword123
+```
+
+3. Espone le porte TCP:
+- 9000 → API S3  
+- 9001 → Console Web
+
+4. Configura volume persistente `/data` su disco dedicato (consigliato ≥ 100 GiB).
+
+### Opzione 2 — Deploy su OpenShift
 
 ```bash
-oc new-project openshift-migration
-```
-
-### 2️⃣ PersistentVolumeClaim per MinIO
-
-```yaml
+oc new-project minio
+oc apply -f - <<EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: minio-pvc
-  namespace: openshift-migration
+  name: minio-pv
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 200Gi
-  storageClassName: nfs-storage
-```
-
-> 💡 La dimensione del PVC deve essere ~1.2× la dimensione totale dei PV da migrare.
-
-### 3️⃣ Deployment MinIO
-
-```yaml
+      storage: 100Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
-  namespace: openshift-migration
 spec:
   replicas: 1
   selector:
@@ -88,144 +110,125 @@ spec:
       containers:
       - name: minio
         image: quay.io/minio/minio:latest
-        args:
-        - server
-        - /data
+        args: ["server", "/data"]
         env:
-        - name: MINIO_ACCESS_KEY
+        - name: MINIO_ROOT_USER
           value: "admin"
-        - name: MINIO_SECRET_KEY
-          value: "password"
+        - name: MINIO_ROOT_PASSWORD
+          value: "StrongPassword123"
         ports:
         - containerPort: 9000
         volumeMounts:
-        - name: minio-data
+        - name: data
           mountPath: /data
       volumes:
-      - name: minio-data
+      - name: data
         persistentVolumeClaim:
-          claimName: minio-pvc
-```
-
-### 4️⃣ Service MinIO
-
-```yaml
+          claimName: minio-pv
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio-service
-  namespace: openshift-migration
+  name: minio
 spec:
   ports:
-  - port: 9000
-    targetPort: 9000
+    - port: 9000
+      targetPort: 9000
   selector:
     app: minio
+EOF
 ```
 
-### 5️⃣ (Facoltativo) Route MinIO
-
-```yaml
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: minio
-  namespace: openshift-migration
-spec:
-  to:
-    kind: Service
-    name: minio-service
-  port:
-    targetPort: 9000
-  tls:
-    termination: edge
+Accedi all’interfaccia web tramite:
+```
+https://minio.<route>.apps.<cluster-domain>:9000
 ```
 
 ---
 
-## 🪣 Configurazione Velero/MTC per MinIO
+## 🛰️ 4. Installazione del Migration Toolkit for Containers (MTC)
 
-### Secret per credenziali S3
+### Metodo 1 — via OperatorHub
+
+1. Accedi al cluster sorgente.  
+2. Vai su **Operators → OperatorHub**.  
+3. Cerca **Migration Toolkit for Containers**.  
+4. Installa nella namespace `openshift-migration`.  
+5. Conferma la creazione dei CRD `MigrationController`, `MigPlan`, `MigStorage`, `MigCluster`, `MigMigration`.
+
+### Metodo 2 — via CLI
 
 ```bash
-oc create secret generic cloud-credentials   -n openshift-migration   --from-literal=cloud=aws_access_key_id=admin,aws_secret_access_key=password
-```
-
-### BackupStorageLocation
-
-```yaml
-apiVersion: velero.io/v1
-kind: BackupStorageLocation
-metadata:
-  name: minio-bsl
-  namespace: openshift-migration
-spec:
-  provider: aws
-  objectStorage:
-    bucket: mtc-backup
-  config:
-    region: minio
-    s3ForcePathStyle: "true"
-    s3Url: http://minio-service.openshift-migration.svc:9000
-  credential:
-    name: cloud-credentials
-    key: cloud
+oc new-project openshift-migration
+oc apply -f https://raw.githubusercontent.com/konveyor/mig-operator/master/deploy/olm-catalog/mig-operator.yaml
 ```
 
 ---
 
-## 🚀 Flusso di migrazione MTC (offline)
+## 🔐 5. Prerequisiti di rete e firewall
 
-1. **Nel cluster sorgente (OCP 4.13)**  
-   - Installa MTC (Migration Toolkit for Containers Operator).  
-   - Configura Velero con il backend MinIO locale.  
-   - Esegui backup dei namespace da migrare:
-
-     ```bash
-     oc -n openshift-migration create migrationbackup mig-backup        --spec-backup-name=mybackup        --spec-backup-namespaces="app1,app2"
-     ```
-
-2. **Esporta il bucket MinIO**  
-   Da VM esterna o pod MinIO:
-
-   ```bash
-   mc alias set local http://localhost:9000 admin password
-   mc mirror local/mtc-backup /mnt/export/minio-backup
-   ```
-
-   Copia `/mnt/export/minio-backup` nel nuovo DC (rsync, HDD, ecc.).
-
-3. **Nel cluster destinazione (OCP 4.18)**  
-   - Installa MTC e Velero.  
-   - Configura un MinIO locale e **copia dentro il bucket** esportato.  
-   - Crea un BackupStorageLocation puntando a quel MinIO.  
-   - Esegui restore:
-
-     ```bash
-     oc -n openshift-migration create migrationrestore mig-restore        --spec-restore-name=myrestore        --spec-backup-name=mybackup
-     ```
-
-4. **Verifica e test**  
-   - Controlla che i Pod siano Running.  
-   - Aggiorna ingress, route, e servizi.  
-
-5. **Switch F5**  
-   - Ridirigi il traffico sul nuovo cluster (ingress 4.18).  
-   - Mantieni il vecchio cluster in read-only per sicurezza.
+| Direzione | Porta | Descrizione |
+|------------|-------|-------------|
+| Source → Target API | TCP/443 | Comunicazione tra cluster (solo per online) |
+| Source → MinIO | TCP/9000 | Upload dei dati esportati |
+| Target → MinIO | TCP/9000 | Download dei dati durante import |
+| API OpenShift | TCP/6443 | Accesso API standard |
+| Registry (opzionale) | TCP/5000-6000 | Se si trasferiscono immagini container interne |
 
 ---
 
-## 💡 Note importanti
+## 🔄 6. Flusso di migrazione
 
-- MTC 1.10 (OCP 4.18) è **retrocompatibile** con backup da MTC 1.8 (OCP 4.13).
-- MinIO deve avere spazio ≥ dimensione PV da migrare × 1.2.
-- Nessuna connessione diretta tra DC richiesta: il bucket viene copiato offline.
-- I backup MTC sono applicativi: Deployment, Secret, ConfigMap, PV inclusi.
+### Scenario Offline (con MinIO)
+
+1. **Configura Storage (MinIO)** → definisci `MigStorage` CRD con endpoint S3.  
+2. **Registra cluster sorgente e target** → `MigCluster` CRD.  
+3. **Crea un MigPlan** → seleziona namespaces e PVC da migrare.  
+4. **Esegui Backup** → MTC esporta YAML, PVC, e dati su MinIO.  
+5. **Esegui Restore sul target** → MTC importa risorse e PV nel nuovo cluster.  
+
+```
+[Source OCP 4.13] → [MinIO] → [Target OCP 4.18]
+```
+
+### Scenario Online (cluster connessi)
+
+1. **Registra entrambi i cluster** tramite API reciproche.  
+2. **Crea un MigPlan condiviso** → namespace, PV, image streams.  
+3. **Lancia la migrazione diretta** → MTC copia risorse e PV in tempo reale.  
+4. **Convalida e test finali** → verifica pod e deployment sul target.
+
+```
+[Source OCP 4.13] ───MTC API───> [Target OCP 4.18]
+```
 
 ---
 
-## 🧾 Risorse utili
+## 🧪 7. Post-migrazione e validazioni
 
-- [Red Hat MTC Documentation](https://access.redhat.com/documentation/en-us/migration_toolkit_for_containers/)
-- [Velero Project](https://velero.io)
-- [MinIO Documentation](https://min.io/docs/minio/linux/index.html)
+- Verifica che i namespace, secret, configmap e deployment siano coerenti.  
+- Controlla i PVC ricreati e i mountPath corretti.  
+- Esegui un **rollout restart** per forzare i pod a riavviarsi.  
+- Aggiorna le route sul F5 per puntare al nuovo cluster.
+
+---
+
+## 🧰 8. Troubleshooting
+
+| Sintomo | Possibile causa | Soluzione |
+|----------|----------------|------------|
+| Migrazione bloccata su “Backup running” | Mancata connessione MinIO o credenziali errate | Verifica `MigStorage` |
+| Errore TLS | Certificato S3 non trusted | Usa opzione `insecure: true` nel CR |
+| PVC non ripristinati | PV non compatibili tra cluster | Assicurati che lo storage class esista sul target |
+| Oggetti duplicati | Migrazione parziale o doppia | Rimuovi risorse e riesegui `restore` |
+
+---
+
+## 🧾 9. Conclusione
+
+- **Scenario Offline:** ideale per datacenter isolati. Backup su MinIO, restore sul target.  
+- **Scenario Online:** più rapido, ma richiede rete sicura e stabile tra cluster.  
+- Entrambi supportati nativamente da MTC e gestibili via console o CLI.  
+- Consigliato testare una migrazione di un singolo namespace prima del cutover finale.
+
+---
