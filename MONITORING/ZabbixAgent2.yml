@@ -1,0 +1,56 @@
+apiVersion: kubernetes.zabbix.com/v1alpha1
+kind: ZabbixAgent2
+metadata:
+  labels:
+    app: agent2
+    app.kubernetes.io/component: ZabbixAgent2
+    app.kubernetes.io/managed-by: ZabbixAgent2-operator
+    app.kubernetes.io/name: zabbix-ocp-prod-acilia
+    app.kubernetes.io/part-of: zabbix-operator-certified
+    vendor: zabbix
+  name: zabbix-ocp-prod-acilia
+  namespace: zabbix
+spec:
+  active_allow: true
+  activeservers: ""
+  allow_key: system.run[*]
+  allow_privileged: true
+  buffer_send: 5
+  buffer_size: 100
+  debug_level: 3
+  deny_key: system.run[*]
+  enable_persistent_buffer: false
+  enable_status_port: false
+  host_interface: ""
+  host_interface_item: ""
+  hostname: ""
+  hostname_item: system.hostname
+  load_module: ""
+  metadata: Linux OCP 4 amd64 AGENT2 NO_SSL
+  metadata_item: ""
+  passive_allow: true
+  passive_servers: ""
+  persistent_buffer_claim: ""
+  persistent_buffer_period: 1h
+  refresh_active_checks: 120
+  server_host: 10.213.13.10
+  start_agents: 3
+  timeout: 3
+  tls_accept: unencrypted
+  tls_ca_file_name: ""
+  tls_cert_file_name: ""
+  tls_cipher_all: ""
+  tls_cipher_all_13: ""
+  tls_cipher_cert: ""
+  tls_cipher_cert_13: ""
+  tls_cipher_psk: ""
+  tls_cipher_psk_13: ""
+  tls_connect: unencrypted
+  tls_crl_file_name: ""
+  tls_key_file_name: ""
+  tls_psk_file_name: ""
+  tls_psk_identity: ""
+  tls_server_cert_issuer: ""
+  tls_server_cert_subject: ""
+  unsafe_user_parameters: false
+  use_host_node_name: true
