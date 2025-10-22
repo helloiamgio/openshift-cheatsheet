@@ -1273,9 +1273,15 @@ oc create secret docker-registry my-namespace-pull-secret \
   --docker-password=<password> \
   --docker-email=<email> -n mynamespace
 ```
+
 Link the new secret to a service account:
 ```bash
 oc secrets link my-serviceaccount my-namespace-pull-secret --for=pull -n mynamespace
+```
+
+View secret in STDOUT:
+```bash
+oc extract secret my-namespace-pull-secret -n mynamespace --to=-
 ```
 
 ---
