@@ -1549,6 +1549,8 @@ oc exec -n openshift-etcd -c etcdctl ${ETCD_POD_NAME} -- sh -c "etcdctl get / --
 
 Backup ETCD shell:
 ```bash
+### 0 0 * * * /usr/local/bin/etcd_backup.sh GCP-PRD 172.26.3.13 >> /home/ocp/backup-etcd/etcd_backup.log 2>&1
+
 cat <<EOF > backup_script.sh
 #!/bin/bash
 
