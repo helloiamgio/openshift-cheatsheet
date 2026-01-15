@@ -1538,6 +1538,22 @@ for i in `oc get pods -n openshift-etcd | egrep -v "NAME|guard|Succeeded" | awk 
 oc logs -n openshift-etcd -c etcd $ETCD_POD_NAME --tail=500 | egrep -i 'fsync|slow|leader|timeout|alarm'
 ```
 
+Diagnostic Steps:
+```bash
+oc get pod -n openshift-etcd
+oc logs etcd-XYZ-master-0 -c etcd -n openshift-etcd
+oc rsh -n openshift-etcd <etcd pod>
+(From inside container run below commands)
+etcdctl member list -w table
+etcdctl endpoint health --cluster
+etcdctl endpoint status -w table
+
+in case oc command doesn't work, connect with ssh to node and run
+
+crictl logs $(crictl ps -aql --label  "io.kubernetes.container.name=etcd-member")
+crictl logs  --since 48h $(crictl ps -aql --label  "io.kubernetes.container.name=etcd-member")
+```
+
 Collect metrics:
 
 ```bash
