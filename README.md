@@ -492,7 +492,6 @@ oc get pods --all-namespaces |  awk '{if ($4 != "Running") system ("oc delete po
 ```
 
 
-
 ### Change the image garbage collection (GC) thresholds
 Modify kubelet GC settings:
 ```bash
@@ -978,6 +977,11 @@ oc patch --type merge machineconfigpool/<machineconfigpool> -p '{"spec":{"maxUna
 ```bash
 oc patch mcp/<mcp_name> --patch '{"spec":{"paused":true}}' --type=merge
 oc patch mcp/<mcp_name> --patch '{"spec":{"paused":false}}' --type=merge
+```
+
+### Scale Up Control Plane Machineset 
+```bash
+oc patch controlplanemachineset.machine.openshift.io cluster -n openshift-machine-api --type=merge -p '{"spec":{"template":{"machines_v1beta1_machine_openshift_io":{"spec":{"providerSpec":{"value":{"numCPUs":8,"memoryMiB":32768}}}}}}}'
 ```
 
 ---
