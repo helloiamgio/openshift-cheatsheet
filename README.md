@@ -1837,6 +1837,17 @@ done
 oc logs -n openshift-machine-config-operator $(oc get pod -n openshift-machine-config-operator -o name | grep controller)
 ```
 
+### Operator stuck in "Unknown Failure" while upgrading in RHOCP 4
+```bash
+
+oc delete pods -l 'app in (catalog-operator, olm-operator)' -n openshift-operator-lifecycle-manager
+
+oc rollout restart deployment.apps/catalog-operator deployment.apps/olm-operator -n openshift-operator-lifecycle-manager
+
+for sub in $(oc get subs -n openshift-storage -o json | jq '.items[] | select((.metadata.annotations."olm.generated-by" | .!= null) and (.status.installplan==null)) | .metadata.name' -r); do oc patch subs -n openshift-storage $sub --type json -p '[{"op":"remove", "path":"/metadata/annotations/olm.generated-by"}]'; done;
+
+```
+
 ---
 ## **ODF**
 ---
