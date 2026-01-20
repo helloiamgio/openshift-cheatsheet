@@ -174,6 +174,14 @@ for i in $(oc get nodes | awk '{print $1}'); do echo "==== $i ====";oc describe 
 oc get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
 ```
 
+### View Nodes Rendered MachineConfig
+```bash
+for n in $(oc get nodes -l node-role.kubernetes.io/master -o name); do
+  echo -n "$n -> "
+  oc get $n -o jsonpath='{.metadata.annotations.machineconfiguration\.openshift\.io/currentConfig}{" | "}{.metadata.annotations.machineconfiguration\.openshift\.io/desiredConfig}{" | "}{.metadata.annotations.machineconfiguration\.openshift\.io/state}{"\n"}'
+done
+```
+
 ### Get Logs for a Pod
 ```bash
 oc logs my-pod
