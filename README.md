@@ -1925,6 +1925,12 @@ oc exec -it $(oc get pod -n openshift-storage -l app=rook-ceph-operator -o name)
 oc get storagecluster -n openshift-storage
 ```
 
+### Noobaa check oggetti e size
+```bash
+radosgw-admin bucket stats | jq -r '
+.[] | "\(.bucket) objs=\(.usage["rgw.main"].num_objects) sizeGB=\(.usage["rgw.main"].size_kb/1024/1024|floor)"'
+```
+
 
 
 
