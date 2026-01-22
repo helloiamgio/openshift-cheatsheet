@@ -20,10 +20,25 @@ export DB_NAME=$(oc exec -n $QUAY_NAMESPACE $QUAY_POD_NAME -- grep '^DB_URI' /co
 
 ```bash
 oc get quayregistry $QUAY_REGISTRY_NAME -n $QUAY_NAMESPACE -o yaml > quay-registry.yaml
-yq -i 'del(.status,.metadata.creationTimestamp,.metadata.finalizers,.metadata.generation,.metadata.resourceVersion,.metadata.uid)' quay-registry.yaml
+yq -i '
+  del(
+    .status,
+    .metadata.creationTimestamp,
+    .metadata.finalizers,
+    .metadata.generation,
+    .metadata.resourceVersion,
+    .metadata.uid,
+    .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
+  )
+' quay-registry.yaml
 
 oc get secret -n $QUAY_NAMESPACE ${QUAY_REGISTRY_NAME}-quay-registry-managed-secret-keys -o yaml > managed_secret_keys.yaml
-yq -i 'del(.metadata.ownerReferences)' managed_secret_keys.yaml
+yq -i '
+  .metadata |= {
+    "name": .name,
+    "namespace": .namespace
+  }
+' managed_secret_keys.yaml
 
 oc get secret -n $QUAY_NAMESPACE $(oc get quayregistry $QUAY_REGISTRY_NAME -n $QUAY_NAMESPACE -o jsonpath='{.spec.configBundleSecret}') -o yaml > config-bundle.yaml
 oc exec -n $QUAY_NAMESPACE $QUAY_POD_NAME -- cat /conf/stack/config.yaml > quay_config.yaml
