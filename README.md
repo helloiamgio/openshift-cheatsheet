@@ -39,6 +39,12 @@ https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/d
 ## **Login and Configuration**
 ---
 
+### oc client download
+```bash
+export OCP_VERSION=latest-4.16
+curl -k https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OCP_VERSION/openshift-client-linux.tar.gz -o oc.tar.gz
+```
+
 ### oc Autocompletion
 ```bash
 oc completion bash >>/etc/bash_completion.d/oc_completion
