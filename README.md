@@ -1937,6 +1937,15 @@ radosgw-admin bucket stats | jq -r '
 .[] | "\(.bucket) objs=\(.usage["rgw.main"].num_objects) sizeGB=\(.usage["rgw.main"].size_kb/1024/1024|floor)"'
 ```
 
+### Noobaa check oggetti e size
+```bash
+oc get ob  -o custom-columns=NAME":metadata.name",BUKCKET_NAME":spec.endpoint.bucketName",STORAGE-CLASS":spec.storageClassName",PHASE":status.phase"
+
+https://access.redhat.com/documentation/en-us/red_hat_openshift_data_foundation/4.12/html-single/managing_hybrid_and_multicloud_resources/index#accessing-the-Multicloud-object-gateway-from-the-mcg-command-line-interface_rhodf
+
+noobaa bucket status {bucket_name}
+```
+
 
 
 
