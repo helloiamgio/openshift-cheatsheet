@@ -188,6 +188,11 @@ for n in $(oc get nodes -l node-role.kubernetes.io/master -o name); do
 done
 ```
 
+### fstrim Nodes to free space
+```bash
+for i in $(oc get node -l '!node-role.kubernetes.io/master' -o name); do oc debug $i -- chroot /host fstrim -av; done
+```
+
 ### Get Logs for a Pod
 ```bash
 oc logs my-pod
@@ -1937,7 +1942,7 @@ radosgw-admin bucket stats | jq -r '
 .[] | "\(.bucket) objs=\(.usage["rgw.main"].num_objects) sizeGB=\(.usage["rgw.main"].size_kb/1024/1024|floor)"'
 ```
 
-### Noobaa check oggetti e size
+### Check bucket status.
 ```bash
 oc get ob  -o custom-columns=NAME":metadata.name",BUKCKET_NAME":spec.endpoint.bucketName",STORAGE-CLASS":spec.storageClassName",PHASE":status.phase"
 
