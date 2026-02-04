@@ -51,20 +51,26 @@ oc exec -n $QUAY_NAMESPACE $QUAY_POD_NAME -- cat /conf/stack/config.yaml > quay_
 Impostare repliche a 0 per quay / mirror / clair (Operator ≥ 3.7)
 
 ```bash
+
 oc patch quayregistry registry -n ns --type=merge -p '
 spec:
   components:
   - kind: horizontalpodautoscaler
     managed: false
   - kind: quay
+    managed: true
     overrides:
       replicas: 0
   - kind: clair
+    managed: true
     overrides:
       replicas: 0
   - kind: mirror
+    managed: true
     overrides:
       replicas: 0
+'
+
 ```
 
 ---
