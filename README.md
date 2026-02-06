@@ -170,6 +170,16 @@ oc get nodes
 oc describe node <node-name>
 ```
 
+### List nodes CPU/RAM
+```bash
+{
+  echo -e "NAME\tROLES\tCPU\tMEMORY"
+  paste \
+    <(oc get nodes --no-headers | awk '{print $1 "\t" $3}') \
+    <(oc get nodes --no-headers -o custom-columns=CPU:.status.capacity.cpu,MEMORY:.status.capacity.memory)
+} | column -t
+```
+
 ### View Nodes allocation
 ```bash
 for i in $(oc get nodes | awk '{print $1}'); do echo "==== $i ====";oc describe node $i 2> /dev/null | grep -A10 Allocated; echo; done
