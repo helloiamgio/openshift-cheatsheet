@@ -94,7 +94,7 @@ export BUCKET_NAME=$(oc get cm -l app=noobaa -n $QUAY_NAMESPACE -o jsonpath='{.i
 rclone config create quay-noobaa s3 provider Other env_auth false access_key_id $AWS_ACCESS_KEY_ID secret_access_key $AWS_SECRET_ACCESS_KEY endpoint $S3_ENDPOINT region us-east-1
 
 mkdir -p blobs
-rclone sync quay-noobaa:$BUCKET_NAME blobs --progress --checksum
+rclone sync quay-noobaa:$BUCKET_NAME blobs --progress --checksum --no-check-certificate
 ```
 
 ---
