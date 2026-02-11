@@ -1546,6 +1546,20 @@ reboot
 oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
 ```
 
+### Recupero Proxy Cluster
+
+```bash
+oc get proxy/cluster -o json | jq -r '
+"export HTTP_PROXY=\(.spec.httpProxy)
+export HTTPS_PROXY=\(.spec.httpsProxy)
+export NO_PROXY=\"\(.spec.noProxy)\"
+export http_proxy=\(.spec.httpProxy)
+export https_proxy=\(.spec.httpsProxy)
+export no_proxy=\"\(.spec.noProxy)\""
+'
+```
+
+
 ## **ETCD**
 Check the etcd status:
 ```bash
