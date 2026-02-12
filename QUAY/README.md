@@ -108,3 +108,4 @@ oc wait quayregistry $QUAY_REGISTRY_NAME --for=condition=Available=true -n $QUAY
 ---
 
 ## Backup completato
+RIF : https://docs.redhat.com/en/documentation/red_hat_quay/3.16/html/red_hat_quay_operator_features/backing-up-and-restoring-intro
