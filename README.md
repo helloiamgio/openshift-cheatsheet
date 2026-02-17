@@ -50,6 +50,11 @@ curl -k https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OCP_VERSION/o
 oc completion bash >>/etc/bash_completion.d/oc_completion
 ```
 
+```bash
+echo 'source <(oc completion bash)' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ### Login with a user
 ```bash
 oc login https://console-openshift-console.apps-crc.testing:8443 -u developer -p developer
