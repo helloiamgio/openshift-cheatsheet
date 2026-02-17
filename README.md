@@ -48,9 +48,7 @@ curl -k https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OCP_VERSION/o
 ### oc Autocompletion
 ```bash
 oc completion bash >>/etc/bash_completion.d/oc_completion
-```
 
-```bash
 echo 'source <(oc completion bash)' >> ~/.bashrc
 source ~/.bashrc
 ```
