@@ -1,4 +1,4 @@
-# 🚀 OpenShift Cheat Sheet 🚀
+v# 🚀 OpenShift Cheat Sheet 🚀
 
 ![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/architecture_overview.png)
 
@@ -1894,11 +1894,18 @@ for sub in $(oc get subs -n openshift-storage -o json | jq '.items[] | select((.
 
 ```
 
-### Retrieve Machine Network, Pod CIDR, Service CIDR
+### Retrieve MachineNetwork, Pod CIDR, Service CIDR
 ```bash
 echo -n "Pod CIDR (clusterNetwork): " ; oc get network.config.openshift.io cluster -o jsonpath='{.spec.clusterNetwork[*].cidr}{"\n"}'
 echo -n "Service CIDR (serviceNetwork): " ; oc get network.config.openshift.io cluster -o jsonpath='{.spec.serviceNetwork[*]}{"\n"}'
 echo -n "Machine Network: " ; oc get infrastructure.config.openshift.io cluster -o jsonpath='{.status.platformStatus.vsphere.machineNetworks}{"\n"}'
+
+- GCP
+
+gcloud compute instances list \
+  --project gcp-prj-ocp-srv-prd-001 \
+  --filter="name~'^ocp-prd-f5ckt-'" \
+  --format="table(name,zone,networkInterfaces[0].network,networkInterfaces[0].subnetwork,networkInterfaces[0].networkIP)"
 ```
 
 ---
