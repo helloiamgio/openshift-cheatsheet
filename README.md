@@ -1,4 +1,4 @@
-v# 🚀 OpenShift Cheat Sheet 🚀
+# 🚀 OpenShift Cheat Sheet 🚀
 
 ![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/architecture_overview.png)
 
