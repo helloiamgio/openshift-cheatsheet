@@ -1,6 +1,6 @@
 
 # OpenShift Container Platform 4.14
-# RUNBOOK OPERATIVO ENTERPRISE – NOC READY (FULL COMMANDS)
+# RUNBOOK OPERATIVO – NOC READY (FULL COMMANDS)
 ## VMware vSphere IPI
 
 ---
@@ -23,8 +23,8 @@ DNS richiesti:
 mkdir -p /opt/ocp
 cd /opt/ocp
 
-wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.14.*/openshift-install-linux.tar.gz
-wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.14.*/openshift-client-linux.tar.gz
+wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.18.*/openshift-install-linux.tar.gz
+wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.18.*/openshift-client-linux.tar.gz
 
 tar zxvf openshift-install-linux.tar.gz
 chmod +x openshift-install
@@ -149,4 +149,145 @@ oc adm top nodes
 oc get events --sort-by=.lastTimestamp | tail -20
 
 ---
-# FINE RUNBOOK
+# FINE RUNBOOK INSTALLAZIONE
+---
+# OpenShift 4.x on vSphere (IPI) -- Definitive Network & Load Balancer Runbook
+
+## Cluster Reference Example
+
+-   Cluster Name: ocp01-prod
+-   Base Domain: agositafinco.it
+-   Machine Network: 10.98.118.0/24
+-   API VIP: 10.98.118.50
+-   Ingress VIP: 10.98.118.51
+
+------------------------------------------------------------------------
+
+# 1. Architecture Overview
+
+API VIP (10.98.118.50) - TCP 6443 → Kubernetes API - TCP 22623 → Machine
+Config Server (bootstrap phase)
+
+Ingress VIP (10.98.118.51) - TCP 80 → Worker nodes - TCP 443 → Worker
+nodes
+
+------------------------------------------------------------------------
+
+# 2. DNS Requirements (Must Exist BEFORE Installation)
+
+## Required Records
+
+api.ocp01-prod.agositafinco.it → 10.98.118.50
+api-int.ocp01-prod.agositafinco.it → 10.98.118.50
+\*.apps.ocp01-prod.agositafinco.it → 10.98.118.51
+
+## Validation
+
+dig api.ocp01-prod.agositafinco.it dig
+api-int.ocp01-prod.agositafinco.it dig
+test.apps.ocp01-prod.agositafinco.it
+
+------------------------------------------------------------------------
+
+# 3. Load Balancer (F5) Configuration
+
+## API VIP -- 10.98.118.50
+
+Type: - Layer 4 TCP - SSL Passthrough - No SSL offload - No HTTP profile
+
+### Ports Required
+
+-   6443 (Kubernetes API)
+-   22623 (Machine Config Server)
+
+### Bootstrap Phase Pool Members
+
+Initially include: - bootstrap_IP:6443 - bootstrap_IP:22623
+
+After masters are created, add: - master1_IP:6443 - master2_IP:6443 -
+master3_IP:6443 - master1_IP:22623 - master2_IP:22623 - master3_IP:22623
+
+After installation completes: - Remove bootstrap from pool
+
+------------------------------------------------------------------------
+
+## Ingress VIP -- 10.98.118.51
+
+Ports: - 80 → worker nodes - 443 → worker nodes
+
+------------------------------------------------------------------------
+
+# 4. Firewall Rules
+
+## Nodes → API VIP
+
+Source: 10.98.118.0/24 Destination: 10.98.118.50 Ports: TCP 6443, TCP
+22623
+
+## Admin Network → API VIP
+
+Destination: 10.98.118.50 Port: TCP 6443
+
+## Nodes → vCenter
+
+Destination: agsvcs001.agositafinco.it Port: TCP 443
+
+## Nodes → Internet or Proxy
+
+If proxy: TCP 3128 If direct: TCP 443 outbound
+
+## Intra-cluster Communication
+
+Allow full TCP/UDP between nodes.
+
+------------------------------------------------------------------------
+
+# 5. Installation Timeline -- What Happens When
+
+## Phase 1 -- Before Running Installer
+
+-   DNS records created
+-   VIP created on F5
+-   Ports 6443 and 22623 active
+-   Firewall rules applied
+-   VIP reachable via nc test
+
+## Phase 2 -- Start Installation
+
+-   Bootstrap VM is created
+-   Add bootstrap IP to API VIP pool (6443 & 22623)
+-   Verify VIP:22623 reachable
+
+## Phase 3 -- Masters Created
+
+-   Masters receive IPs (DHCP or static)
+-   Add master IPs to API VIP pool
+-   Bootstrap still remains in pool during install
+
+## Phase 4 -- Bootstrap Complete
+
+When installer reports "Bootstrap complete": - Remove bootstrap from
+pool - Only masters remain in API VIP pool
+
+------------------------------------------------------------------------
+
+# 6. Critical Validation Before Setup
+
+nc -zv 10.98.118.50 6443 nc -zv 10.98.118.50 22623 nc -zv 10.98.118.51
+443
+
+All must respond before starting installation.
+
+------------------------------------------------------------------------
+
+# 7. Common Installation Failures
+
+-   No route to host → VIP not reachable
+-   22623 connection refused → LB misconfiguration
+-   x509 unknown authority → Missing vCenter CA trust
+-   Bootstrap timeout → api-int DNS missing or incorrect
+
+------------------------------------------------------------------------
+
+# End of Runbook
+
