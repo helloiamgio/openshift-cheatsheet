@@ -420,6 +420,29 @@ oc scale dc/nginx --replicas=2
 oc autoscale dc foo --min=2 --max=4 --cpu-percent=10
 ```
 
+### LIST DEPLOY/REPLICAS x NAMESPACE (DR-check)
+```bash
+kubectl get deploy,pod -A -o json | jq -r '
+  .items[] |
+  select(.metadata.namespace | test("^(openshift-|kube-|default$|registry$|istio|dyna|sentinel|turbo|zabbix|operator|cluster-management)")==false) |
+  if .kind=="Deployment" then
+    {ns:.metadata.namespace, deploys:1, replicas:(.spec.replicas // 0), pods:0, notready:0}
+  else
+    {ns:.metadata.namespace, deploys:0, replicas:0, pods:1,
+     notready:(if ([.status.containerStatuses[]? | select(.ready==false)] | length) > 0 then 1 else 0 end)}
+  end
+' | jq -sr '
+  group_by(.ns)[] |
+  [
+    .[0].ns,
+    (map(.deploys) | add),
+    (map(.replicas) | add),
+    (map(.pods) | add),
+    (map(.notready) | add)
+  ] | @tsv
+' | (echo -e "NAMESPACE\tN_DEPLOY\tTOT_REPLICHE\tTOT_POD\tPOD_NON_READY"; cat) | column -t -s $'\t'
+```
+
 ---
 
 ## **ConfigMaps**
