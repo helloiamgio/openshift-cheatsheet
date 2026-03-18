@@ -186,6 +186,15 @@ oc describe node <node-name>
 ### View Nodes allocation
 ```bash
 for i in $(oc get nodes | awk '{print $1}'); do echo "==== $i ====";oc describe node $i 2> /dev/null | grep -A10 Allocated; echo; done
+
+oc get nodes \
+  -o custom-columns=NAME:.metadata.name,CPU:.status.capacity.cpu,MEMORY:.status.capacity.memory,EPHEMERAL:.status.capacity.ephemeral-storage,ALLOC_CPU:.status.allocatable.cpu,ALLOC_MEM:.status.allocatable.memory,ALLOC_EPHEMERAL:.status.allocatable.ephemeral-storage
+
+oc get nodes --no-headers | awk '{print $1}' | while read -r n; do
+  echo "===== $n ====="
+  oc describe node "$n" | egrep "^(Name:|Roles:|Capacity:|Allocatable:|  cpu:|  memory:|  ephemeral-storage:|Allocated resources:)"
+  echo
+done
 ```
 
 ### View Nodes Taints
