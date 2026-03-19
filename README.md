@@ -361,6 +361,205 @@ oc run fedora-pod --image=fedora --restart=Never --command -- sleep infinity
 oc cp ./byteman-4.0.12 wildfly-basic-1-mrlt5:/opt/wildfly
 ```
 
+### Create Infra MachineSets + Move router, registry, monitoring to infra nodes 
+```bash
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  annotations:
+    machine.openshift.io/memoryMb: "32768"
+    machine.openshift.io/vCPU: "8"
+  labels:
+    hive.openshift.io/machine-pool: worker
+    hive.openshift.io/managed: "true"
+    machine.openshift.io/cluster-api-cluster: ocp01-prod-hkhmm
+  name: ocp01-prod-hkhmm-infra-0
+  namespace: openshift-machine-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: ocp01-prod-hkhmm
+      machine.openshift.io/cluster-api-machineset: ocp01-prod-hkhmm-infra-0
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ocp01-prod-hkhmm
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: ocp01-prod-hkhmm-infra-0
+    spec:
+      lifecycleHooks: {}
+      metadata:
+        labels:
+          node-role.kubernetes.io/infra: ""
+      providerSpec:
+        value:
+          apiVersion: machine.openshift.io/v1beta1
+          kind: VSphereMachineProviderSpec
+          credentialsSecret:
+            name: vsphere-cloud-credentials
+          diskGiB: 150
+          memoryMiB: 32768
+          metadata:
+            creationTimestamp: null
+          network:
+            devices:
+            - networkName: 2245-AGOS-LAN-OCP01-PROD
+          numCPUs: 8
+          numCoresPerSocket: 1
+          snapshot: ""
+          template: ocp01-prod-hkhmm-rhcos-generated-region-generated-zone
+          userDataSecret:
+            name: worker-user-data
+          workspace:
+            datacenter: AGOS
+            datastore: /AGOS/datastore/BT/LUN-BT-OPENSHIFT-250
+            folder: /AGOS/vm/AGOS_OCP_OCP01_PROD
+            resourcePool: /AGOS/host/ClusterLNX01/Resources
+            server: agsvcs001.agositafinco.it
+      taints:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/infra
+---
+
+oc patch ingresscontroller/default -n openshift-ingress-operator --type=merge -p '{
+  "spec":{
+    "nodePlacement":{
+      "nodeSelector":{
+        "matchLabels":{
+          "node-role.kubernetes.io/infra":""
+        }
+      },
+      "tolerations":[
+        {
+          "key":"node-role.kubernetes.io/infra",
+          "operator":"Exists",
+          "effect":"NoSchedule"
+        }
+      ]
+    }
+  }
+}'
+
+oc patch ingresscontroller/default -n openshift-ingress-operator --type=merge -p '{
+  "spec":{
+    "replicas":3
+  }
+}'
+
+oc patch configs.imageregistry.operator.openshift.io/cluster --type=merge -p '{
+  "spec":{
+    "nodeSelector":{
+      "node-role.kubernetes.io/infra":""
+    },
+    "tolerations":[
+      {
+        "key":"node-role.kubernetes.io/infra",
+        "operator":"Exists",
+        "effect":"NoSchedule"
+      }
+    ]
+  }
+}'
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |+
+    alertmanagerMain:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    prometheusK8s:
+      retention: 7d
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+      volumeClaimTemplate:
+        spec:
+          storageClassName: thin
+          resources:
+            requests:
+              storage: 100Gi
+
+    prometheusOperator:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    metricsServer:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    k8sPrometheusAdapter:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    kubeStateMetrics:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    telemeterClient:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    openshiftStateMetrics:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    thanosQuerier:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+    monitoringPlugin:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: node-role.kubernetes.io/infra
+        operator: Exists
+        effect: NoSchedule
+
+oc apply -f cluster-monitoring-configmap.yaml
+```
+
 ---
 
 ## **Deployments**
