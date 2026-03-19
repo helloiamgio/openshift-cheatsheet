@@ -413,11 +413,11 @@ spec:
           userDataSecret:
             name: worker-user-data
           workspace:
-            datacenter: AGOS
-            datastore: /AGOS/datastore/BT/LUN-BT-OPENSHIFT-250
-            folder: /AGOS/vm/AGOS_OCP_OCP01_PROD
-            resourcePool: /AGOS/host/ClusterLNX01/Resources
-            server: agsvcs001.agositafinco.it
+            datacenter: ACME
+            datastore: /ACME/datastore/BT/LUN-BT-OPENSHIFT-250
+            folder: /ACME/vm/AGOS_OCP_OCP01_PROD
+            resourcePool: /ACME/host/ClusterLNX01/Resources
+            server: agsvcs001.acme.it
       taints:
       - effect: NoSchedule
         key: node-role.kubernetes.io/infra
