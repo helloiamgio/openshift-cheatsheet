@@ -83,10 +83,15 @@ oc config view
 ```bash
 oc get secret vsphere-creds -o yaml -n kube-system
 oc get cm cloud-provider-config -o yaml -n openshift-config
-oc get infrastructures.config.openshift.io -o yaml 
+oc get infrastructures.config.openshift.io -o yaml
 ```
 
-
+### Fix VSphere Credential [https://access.redhat.com/solutions/6677901]
+```bash
+https://access.redhat.com/solutions/6677901
+oc get secret vsphere-creds -o yaml -n kube-system
+oc patch kubecontrollermanager cluster -p='{"spec": {"forceRedeploymentReason": "recovery-'"$( date --rfc-3339=ns )"'"}}' --type=merge
+``` 
 
 ### Update the current context to have users login to the desired namespace
 ```bash
