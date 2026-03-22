@@ -1,7 +1,3 @@
-
----
-layout: default
-title: rclone — Cheat Sheet Definitivo (OCP/ODF)
 ---
 
 # rclone — Cheat Sheet Definitivo (OCP/ODF friendly)
