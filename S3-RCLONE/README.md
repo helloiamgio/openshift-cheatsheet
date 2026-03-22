@@ -1,5 +1,3 @@
----
-
 # rclone — Cheat Sheet Definitivo (OCP/ODF friendly)
 
 > **Scopo**: guida pratica e compatta all'uso di `rclone` con esempi pronti all’uso. In coda trovi la sezione dedicata a **S3 su ODF/NooBaa in OpenShift** (recupero endpoint/bucket e configurazione). Questa pagina è pubblicabile direttamente su **GitHub Pages**.
