@@ -1863,6 +1863,22 @@ export no_proxy=\"\(.spec.noProxy)\""
 '
 ```
 
+### Disable disableCopiedCSVs parameter to true for the OLMConfig 
+
+```bash
+https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/operators/administrator-tasks#olm-disabling-copied-csvs_olm-config
+
+oc apply -f - <<EOF
+apiVersion: operators.coreos.com/v1
+kind: OLMConfig
+metadata:
+  name: cluster
+spec:
+  features:
+    disableCopiedCSVs: true
+EOF
+
+```
 
 ## **ETCD**
 Check the etcd status:
