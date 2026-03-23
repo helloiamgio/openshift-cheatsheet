@@ -2216,6 +2216,8 @@ gcloud compute instances list \
 ### Script to patch CephTools 
 
 ```bash
+oc exec -n openshift-storage deployment/rook-ceph-tools -- ceph status
+
 ceph status
 ceph osd status
 ceph osd pool ls
