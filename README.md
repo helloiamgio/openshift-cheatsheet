@@ -2209,6 +2209,11 @@ oc rollout restart deployment.apps/catalog-operator deployment.apps/olm-operator
 
 for sub in $(oc get subs -n openshift-storage -o json | jq '.items[] | select((.metadata.annotations."olm.generated-by" | .!= null) and (.status.installplan==null)) | .metadata.name' -r); do oc patch subs -n openshift-storage $sub --type json -p '[{"op":"remove", "path":"/metadata/annotations/olm.generated-by"}]'; done;
 
+
+oc delete pod -l olm.catalogSource=redhat-operators -n openshift-marketplace
+oc delete pod -l app=catalog-operator -n openshift-operator-lifecycle-manager
+oc patch sub ${SUBSCRIPTION} -n ${PROJECT} --subresource=status --type json -p '[{"op":"remove","path":"/status/conditions"}]'
+
 ```
 
 ### Retrieve MachineNetwork, Pod CIDR, Service CIDR
