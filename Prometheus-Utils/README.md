@@ -353,7 +353,7 @@ max_over_time(instance:node_cpu_utilisation:rate1m{job="node-exporter"} [30d]) *
 )
 ```
 
-# CPU REQUEST TOTALE NODI WORKER
+### CPU REQUEST TOTALE NODI WORKER
 ```promql
 sum(
   kube_node_status_allocatable{resource="cpu", unit="core", node=~".*worker.*"}
