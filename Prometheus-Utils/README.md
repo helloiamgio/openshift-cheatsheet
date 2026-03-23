@@ -240,29 +240,37 @@ count by (namespace)(
 
 ---
 ## 📊 CAPACITY
-```promql
-# Utilizzo reale di CPU sui nodi (media mobile a 5 minuti, escluso idle)
-cluster:node_cpu:ratio_rate5m{cluster=""}
 
-# Percentuale di CPU richieste dai pod rispetto alle CPU allocabili del cluster
+### Utilizzo reale di CPU sui nodi (media mobile a 5 minuti, escluso idle)
+```promql
+cluster:node_cpu:ratio_rate5m{cluster=""}
+```
+
+### Percentuale di CPU richieste dai pod rispetto alle CPU allocabili del cluster
+```promql
 sum(namespace_cpu:kube_pod_container_resource_requests:sum{cluster=""}) 
 / sum(kube_node_status_allocatable{job="kube-state-metrics",resource="cpu",cluster=""})
+```
 
-# Percentuale di CPU limits impostati dai pod rispetto alle CPU allocabili del cluster
+### Percentuale di CPU limits impostati dai pod rispetto alle CPU allocabili del cluster
+```promql
 sum(namespace_cpu:kube_pod_container_resource_limits:sum{cluster=""}) 
 / sum(kube_node_status_allocatable{job="kube-state-metrics",resource="cpu",cluster=""})
+
 
 sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{job="node-exporter",cluster=""})
 sum(namespace_memory:kube_pod_container_resource_requests:sum{cluster=""}) / sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory",cluster=""})
 sum(namespace_memory:kube_pod_container_resource_limits:sum{cluster=""}) / sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory",cluster=""})
+```
 
-
-
-# CPU Usage per nodo worker (media su 5m)
+### CPU Usage per nodo worker (media su 5m)
+```promql
 100 * avg(rate(node_cpu_seconds_total{mode!="idle", instance=~".*worker.*"}[5m])) by (instance)
   / avg(count(node_cpu_seconds_total{mode="idle", instance=~".*worker.*"}) by (instance))
+```
 
-# CPU Requests per nodo worker
+### CPU Requests per nodo worker
+```promql
 100 *
 sum by (node) (
   kube_pod_container_resource_requests{resource="cpu", unit="core"}
@@ -273,59 +281,80 @@ sum by (node) (
 sum by (node) (
   kube_node_status_allocatable{resource="cpu", unit="core", node=~".*worker.*"}
 )
+```
 
-# CPU Limits per nodo worker
+### CPU Limits per nodo worker
+```promql
 100 * sum(kube_pod_container_resource_limits{resource="cpu", unit="core"}) by (node)
   / sum(kube_node_status_allocatable{resource="cpu", unit="core"}) by (node)
+```
 
-# RAM usata per nodo worker
+### RAM usata per nodo worker
+```promql
 100 * (1 - (sum(node_memory_MemAvailable_bytes{instance=~".*worker.*"}) by (instance)
   / sum(node_memory_MemTotal_bytes{instance=~".*worker.*"}) by (instance)))
+```
 
-# RAM Requests per nodo worker
+### RAM Requests per nodo worker
+```promql
 100 * sum(kube_pod_container_resource_requests{resource="memory", unit="byte"}) by (node)
   / sum(kube_node_status_allocatable{resource="memory", unit="byte"}) by (node)
   and on(node) kube_node_status_allocatable{node=~".*worker.*"}
+```
 
-# RAM Limits per nodo worker
+### RAM Limits per nodo worker
+```promql
 100 * sum(kube_pod_container_resource_limits{resource="memory", unit="byte"}) by (node)
   / sum(kube_node_status_allocatable{resource="memory", unit="byte"}) by (node)
   and on(node) kube_node_status_allocatable{node=~".*worker.*"}
+```
 
-
-# RAM disponibile per scheduling (requests)
+### RAM disponibile per scheduling (requests)
+```promql
 (
   sum(kube_node_status_allocatable{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
   -
   sum(kube_pod_container_resource_requests{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
 ) / 1024 / 1024 / 1024
+```
 
-# CPU disponibile per scheduling (requests)
+### CPU disponibile per scheduling (requests)
+```promql
 (
   sum(kube_node_status_allocatable{resource="cpu", unit="core", node=~".*worker.*"}) by (node)
   -
   sum(kube_pod_container_resource_requests{resource="cpu", unit="core", node=~".*worker.*"}) by (node)
 )
+```
 
-# % MAX/AVERAGE Memory:
+### % MAX/AVERAGE Memory:
+```promql
 avg_over_time(instance:node_memory_utilisation:ratio{job="node-exporter"}[30d])*100
 max_over_time(instance:node_memory_utilisation:ratio{job="node-exporter"}[30d])*100
+```
 
-# % MAX/AVERAGE CPU:
+### % MAX/AVERAGE CPU:
+```promql
 avg_over_time(instance:node_cpu_utilisation:rate1m{job="node-exporter"} [30d]) * 100
 max_over_time(instance:node_cpu_utilisation:rate1m{job="node-exporter"} [30d]) * 100
+```
 
-# % RAM DISPONIBILE 
+### % RAM DISPONIBILE
+```promql
 (node_memory_MemAvailable_bytes{instance=~".*worker.*"} / node_memory_MemTotal_bytes{instance=~".*worker.*"}) * 100
+```
 
-# % CPU DISPONIBILE
+### % CPU DISPONIBILE
+```promql
 100 * (
   sum by (instance) (rate(node_cpu_seconds_total{mode="idle", instance=~".*worker.*"}[5m]))
   /
   sum by (instance) (rate(node_cpu_seconds_total{instance=~".*worker.*"}[5m]))
 )
+```
 
 # CPU REQUEST TOTALE NODI WORKER
+```promql
 sum(
   kube_node_status_allocatable{resource="cpu", unit="core", node=~".*worker.*"}
 )
@@ -333,8 +362,10 @@ sum(
 sum(
   kube_pod_container_resource_requests{resource="cpu", unit="core", node=~".*worker.*"}
 )
+```
 
-# RAM REQUEST TOTALE NODI WORKER
+### RAM REQUEST TOTALE NODI WORKER
+```promql
 sum(
   (
     sum(kube_node_status_allocatable{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
@@ -342,7 +373,10 @@ sum(
     sum(kube_pod_container_resource_requests{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
   )
 )
-# GBi senza metrics explorer 
+```
+
+### GBi senza metrics explorer
+```promql
 (
   sum(
     kube_node_status_allocatable{resource="memory", unit="byte", node=~".*worker.*"}
