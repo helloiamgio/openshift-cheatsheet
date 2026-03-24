@@ -1930,6 +1930,14 @@ export ETCD_POD_NAME=$(oc get pods -n openshift-etcd -l app=etcd --field-selecto
 oc exec -n openshift-etcd -c etcdctl ${ETCD_POD_NAME} -- sh -c "etcdctl get / --prefix --keys-only  | grep -oE '^/[a-z|.]+/[a-z|.|8]*' | sort | uniq -c | sort -rn" | while read KEY; do printf "$KEY\t" && oc exec -n openshift-etcd ${ETCD_POD_NAME} -c etcdctl -- etcdctl get ${KEY##* } --prefix --write-out=json | jq '[.kvs[].value | length] | add ' | numfmt --to=iec ; done | sort -k3 -hr | column -t
 ```
 
+Check the number of etcd objects:
+```bash
+oc project openshift-etcd
+oc get po
+oc rsh etcd-pod-name
+sh-5.1# etcdctl get / --prefix --keys-only | sed '/^$/d' | cut -d/ -f3 | sort | uniq -c | sort -rn
+```
+
 Backup ETCD shell:
 ```bash
 ### 0 0 * * * /usr/local/bin/etcd_backup.sh GCP-PRD 172.26.3.13 >> /home/ocp/backup-etcd/etcd_backup.log 2>&1
