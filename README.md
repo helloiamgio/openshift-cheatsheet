@@ -2216,6 +2216,41 @@ oc patch sub ${SUBSCRIPTION} -n ${PROJECT} --subresource=status --type json -p '
 
 ```
 
+### Operator Upgrade Not Progressing [https://access.redhat.com/solutions/7020921]
+```bash
+for OPERATOR in ocs-operator mcg-operator odf-operator odf-csi-addons-operator cephcsi-operator ocs-client-operator odf-prometheus-operator rook-ceph-operator recipe odf-dependencies; do export OPERATOR; oc get job -n openshift-marketplace -o json | jq -r '.items[] | select(.spec.template.spec.containers[].env[].value|contains (env.OPERATOR)) | .metadata.name' >> /tmp/jobs; done
+
+cat /tmp/jobs ( example, could be many more in customer env.) 
+6d97dfcfa4d148a766632d834e1ebbd6fa245631f49e8243eb42ff596722969
+6f70c8b65e5a693e11613dd966e9a37bb81e3324323c2dfe14badc99e71077e
+
+for i in `cat /tmp/jobs`; do oc delete job $i -n openshift-marketplace; oc delete configmap $i -n openshift-marketplace; done
+
+oc delete installplans -n openshift-storage --all
+oc delete subs odf-operator -n openshift-storage
+oc get subs -n openshift-storage
+for i in $(oc get csv -n openshift-storage -o name | grep rhodf); do oc delete $i -n openshift-storage; done
+oc get catalogsource -n openshift-marketplace|grep redhat-operators
+oc delete pods -l 'app in (catalog-operator, olm-operator)' -n openshift-operator-lifecycle-manager
+
+ $ vi subscription.yaml
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: odf-operator
+  namespace: openshift-storage
+spec:
+  channel: "stable-4.14" # <-- Channel should be modified depending on the OCS version to be installed. Please  ensure to maintain compatibility with OCP version
+  installPlanApproval: Automatic
+  name: odf-operator
+  source: redhat-operators  # <-- Modify the name of the redhat-operators catalogsource if not default
+  sourceNamespace: openshift-marketplace
+
+ $ oc apply -f subscription.yaml
+
+```
+
 ### Retrieve MachineNetwork, Pod CIDR, Service CIDR
 ```bash
 echo -n "Pod CIDR (clusterNetwork): " ; oc get network.config.openshift.io cluster -o jsonpath='{.spec.clusterNetwork[*].cidr}{"\n"}'
