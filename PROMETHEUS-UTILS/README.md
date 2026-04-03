@@ -386,7 +386,6 @@ sum(
     kube_pod_container_resource_requests{resource="memory", unit="byte", node=~".*worker.*"}
   )
 ) / 1024 / 1024 / 1024
-}
 ```
 
 ---
