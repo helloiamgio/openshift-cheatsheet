@@ -356,36 +356,43 @@ max_over_time(instance:node_cpu_utilisation:rate1m{job="node-exporter"} [30d]) *
 ### CPU REQUEST TOTALE NODI WORKER
 ```promql
 sum(
-  kube_node_status_allocatable{resource="cpu", unit="core", node=~".*worker.*"}
-)
--
-sum(
-  kube_pod_container_resource_requests{resource="cpu", unit="core", node=~".*worker.*"}
+  kube_pod_container_resource_requests{resource="cpu", unit="core"}
+  * on(node) group_left(role)
+    kube_node_role{role="worker"}
 )
 ```
 
 ### RAM REQUEST TOTALE NODI WORKER
 ```promql
 sum(
-  (
-    sum(kube_node_status_allocatable{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
-    -
-    sum(kube_pod_container_resource_requests{resource="memory", unit="byte", node=~".*worker.*"}) by (node)
-  )
+  kube_pod_container_resource_requests{resource="memory", unit="byte"}
+  * on(node) group_left(role)
+    kube_node_role{role="worker"}
+) / 1024^3
+```
+
+
+### CPU USATA TOTALE NODI WORKER
+```promql
+sum(
+  rate(container_cpu_usage_seconds_total{container!="", container!="POD", pod!=""}[5m])
+  * on(namespace, pod) group_left(node)
+    kube_pod_info
+  * on(node) group_left(role)
+    kube_node_role{role="worker"}
 )
 ```
 
-### GBi senza metrics explorer
+
+### RAM USATA TOTALE NODI WORKER
 ```promql
-(
-  sum(
-    kube_node_status_allocatable{resource="memory", unit="byte", node=~".*worker.*"}
-  )
-  -
-  sum(
-    kube_pod_container_resource_requests{resource="memory", unit="byte", node=~".*worker.*"}
-  )
-) / 1024 / 1024 / 1024
+sum(
+  container_memory_working_set_bytes{container!="", container!="POD", pod!=""}
+  * on(namespace, pod) group_left(node)
+    kube_pod_info
+  * on(node) group_left(role)
+    kube_node_role{role="worker"}
+) / 1024^3
 ```
 
 ---
