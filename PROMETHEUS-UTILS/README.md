@@ -377,9 +377,13 @@ sum(
 sum(
   rate(container_cpu_usage_seconds_total{container!="", container!="POD", pod!=""}[5m])
   * on(namespace, pod) group_left(node)
-    kube_pod_info
-  * on(node) group_left(role)
-    kube_node_role{role="worker"}
+    max by(namespace, pod, node) (
+      kube_pod_info
+    )
+  * on(node) group_left()
+    max by(node) (
+      kube_node_role{role="worker"}
+    )
 )
 ```
 
@@ -389,9 +393,13 @@ sum(
 sum(
   container_memory_working_set_bytes{container!="", container!="POD", pod!=""}
   * on(namespace, pod) group_left(node)
-    kube_pod_info
-  * on(node) group_left(role)
-    kube_node_role{role="worker"}
+    max by(namespace, pod, node) (
+      kube_pod_info
+    )
+  * on(node) group_left()
+    max by(node) (
+      kube_node_role{role="worker"}
+    )
 ) / 1024^3
 ```
 
