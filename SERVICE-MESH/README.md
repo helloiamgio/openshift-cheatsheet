@@ -4,7 +4,8 @@ Cheatsheet pratica per OpenShift Service Mesh (OSSM 2.x) su OpenShift, orientata
 
 - replica di uno `ServiceMeshControlPlane` (SMCP) su un cluster nuovo
 - ingress gateway con `NodePort` fissi `30001` e `30002`
-- rimozione di `nodeSelector`/`tolerations` infra
+- variante senza `nodeSelector`/`tolerations` infra
+- variante con scheduling dei pod sui nodi infra
 - rimozione di `additionalIngress` di backend
 - disabilitazione di Jaeger nel control plane
 - verifica e troubleshooting operativo
@@ -229,6 +230,281 @@ oc -n istio-system get svc istio-ingressgateway
 ```
 
 ---
+## 3-bis. Manifest completo SMCP "target" con scheduling sui nodi infra
+
+Red Hat documenta esplicitamente che, per eseguire i componenti del control plane su nodi infrastrutturali, vanno aggiunti `nodeSelector` e `tolerations` in:
+
+- `spec.runtime.defaults.pod`
+- `spec.runtime.components.pilot.pod`
+- `spec.gateways.ingress.runtime.pod`
+- `spec.gateways.egress.runtime.pod`
+
+Questa è la variante pratica del manifest precedente, adattata al tuo caso:
+
+- `version: v2.6`
+- `tracing.type: None`
+- niente `additionalIngress`
+- ingress principale `NodePort`
+- `30001` per HTTP
+- `30002` per HTTPS
+- scheduling su nodi infra
+
+> Nota: le `tolerations` dipendono dai taint reali dei tuoi nodi infra. Nel tuo ambiente hai già verificato che funzionano queste:
+>
+> - `NoSchedule` su `node-role.kubernetes.io/infra`
+> - `NoExecute` su `node-role.kubernetes.io/infra`
+> - `NoSchedule` su `node.ocs.openshift.io/storage`
+
+Salva come `smcp-basic-infra.yaml`:
+
+```yaml
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: basic
+  namespace: istio-system
+spec:
+  version: v2.6
+
+  mode: ClusterWide
+  profiles:
+    - default
+
+  policy:
+    type: Istiod
+
+  telemetry:
+    type: Istiod
+
+  tracing:
+    type: None
+
+  security:
+    certificateAuthority:
+      type: Istiod
+      istiod:
+        type: PrivateKey
+        privateKey:
+          rootCADir: /etc/cacerts
+    dataPlane:
+      mtls: true
+
+  addons:
+    grafana:
+      enabled: true
+      install:
+        service:
+          ingress:
+            enabled: true
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
+    kiali:
+      enabled: true
+      name: kiali
+      install:
+        dashboard:
+          viewOnly: false
+        service:
+          ingress:
+            enabled: true
+    prometheus:
+      enabled: true
+      install:
+        service:
+          ingress:
+            enabled: true
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: prometheus-tls
+
+  gateways:
+    enabled: true
+    openshiftRoute:
+      enabled: false
+
+    ingress:
+      enabled: true
+      runtime:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/infra
+            - effect: NoExecute
+              key: node-role.kubernetes.io/infra
+            - effect: NoSchedule
+              key: node.ocs.openshift.io/storage
+        deployment:
+          autoScaling:
+            enabled: false
+        container:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+      service:
+        type: NodePort
+        ports:
+          - name: status-port
+            port: 15021
+            protocol: TCP
+            targetPort: 15021
+          - name: http
+            port: 80
+            protocol: TCP
+            targetPort: 8080
+            nodePort: 30001
+          - name: https
+            port: 443
+            protocol: TCP
+            targetPort: 8443
+            nodePort: 30002
+
+    egress:
+      enabled: true
+      runtime:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/infra
+            - effect: NoExecute
+              key: node-role.kubernetes.io/infra
+            - effect: NoSchedule
+              key: node.ocs.openshift.io/storage
+        deployment:
+          autoScaling:
+            enabled: false
+        container:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+      service: {}
+
+  runtime:
+    components:
+      pilot:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/infra
+            - effect: NoExecute
+              key: node-role.kubernetes.io/infra
+            - effect: NoSchedule
+              key: node.ocs.openshift.io/storage
+        deployment:
+          autoScaling:
+            enabled: false
+        container:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+    defaults:
+      pod:
+        nodeSelector:
+          node-role.kubernetes.io/infra: ""
+        tolerations:
+          - effect: NoSchedule
+            key: node-role.kubernetes.io/infra
+          - effect: NoExecute
+            key: node-role.kubernetes.io/infra
+          - effect: NoSchedule
+            key: node.ocs.openshift.io/storage
+      deployment:
+        podDisruption:
+          enabled: false
+      container:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
+```
+
+Applica:
+
+```bash
+oc apply -f smcp-basic-infra.yaml
+```
+
+Verifica che i pod del control plane siano finiti sui nodi infra:
+
+```bash
+oc -n istio-system get pods -o wide
+oc get nodes --show-labels | grep node-role.kubernetes.io/infra
+```
+
+Filtro utile:
+
+```bash
+oc -n istio-system get pod -o wide | egrep 'istiod|istio-ingress|istio-egress|grafana|prometheus|kiali'
+```
+
+### Patch rapida per aggiungere scheduling infra a uno SMCP già esistente
+
+```bash
+oc -n istio-system patch smcp basic --type=merge -p '
+spec:
+  gateways:
+    ingress:
+      runtime:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+          - effect: NoSchedule
+            key: node-role.kubernetes.io/infra
+          - effect: NoExecute
+            key: node-role.kubernetes.io/infra
+          - effect: NoSchedule
+            key: node.ocs.openshift.io/storage
+    egress:
+      runtime:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+          - effect: NoSchedule
+            key: node-role.kubernetes.io/infra
+          - effect: NoExecute
+            key: node-role.kubernetes.io/infra
+          - effect: NoSchedule
+            key: node.ocs.openshift.io/storage
+  runtime:
+    components:
+      pilot:
+        pod:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
+          tolerations:
+          - effect: NoSchedule
+            key: node-role.kubernetes.io/infra
+          - effect: NoExecute
+            key: node-role.kubernetes.io/infra
+          - effect: NoSchedule
+            key: node.ocs.openshift.io/storage
+    defaults:
+      pod:
+        nodeSelector:
+          node-role.kubernetes.io/infra: ""
+        tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/infra
+        - effect: NoExecute
+          key: node-role.kubernetes.io/infra
+        - effect: NoSchedule
+          key: node.ocs.openshift.io/storage
+'
+```
+
+---
+
 
 ## 4. Verifica veloce dei NodePort
 
@@ -460,6 +736,41 @@ spec:
 ---
 
 ## 10. Troubleshooting rapido
+
+### 10.0 I pod non vanno sui nodi infra
+
+Verifica i label dei nodi:
+
+```bash
+oc get nodes --show-labels | grep node-role.kubernetes.io/infra
+```
+
+Verifica eventuali taint:
+
+```bash
+oc describe node <infra-node> | egrep -A5 'Taints:|Roles:'
+```
+
+Verifica che lo SMCP contenga davvero i blocchi `pod.nodeSelector` / `pod.tolerations`:
+
+```bash
+oc -n istio-system get smcp basic -o yaml | egrep -A8 'defaults:|pilot:|ingress:|egress:|nodeSelector:|tolerations:'
+```
+
+Verifica dove sono schedulati i pod:
+
+```bash
+oc -n istio-system get pod -o wide
+```
+
+Cause tipiche:
+
+- i nodi hanno label infra ma anche taint diversi da quelli tollerati
+- hai messo `runtime.defaults.pod`, ma non `pilot` / `ingress` / `egress`
+- lo SMCP non è ancora stato reconciliato
+- stai applicando un dump completo invece di un manifest pulito
+
+---
 
 ### 10.1 Errore `metadata.resourceVersion must be specified for an update`
 
