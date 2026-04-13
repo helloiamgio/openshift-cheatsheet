@@ -952,3 +952,162 @@ oc delete project my-app-ns
 - OpenShift Container Platform 4.19 - Service Mesh 2.x
 - Red Hat OpenShift Service Mesh 3 - Migrating from Service Mesh 2 to 3
 
+
+---
+
+## 15. Schema visivo: come funziona OSSM
+
+### 15.1 Vista logica end-to-end
+
+```text
+                                     +-----------------------------------+
+                                     |        Namespace istio-system     |
+                                     |-----------------------------------|
+                                     | ServiceMeshControlPlane (SMCP)    |
+                                     | - definisce il control plane      |
+                                     | - configura ingress/egress        |
+                                     | - abilita telemetry / policy      |
+                                     | - imposta mTLS / tracing          |
+                                     |                                   |
+                                     | Istiod                            |
+                                     | - distribuisce config ai proxy    |
+                                     | - service discovery / xDS         |
+                                     | - cert/mTLS per i sidecar         |
+                                     |                                   |
+                                     | Prometheus / Grafana / Kiali      |
+                                     | - metriche / dashboard / topology |
+                                     +----------------+------------------+
+                                                      |
+                                                      | config / cert / policy
+                                                      v
++------------------+        NodePort 30001/30002   +--+-----------------------+
+| Client / F5 / LB | ----------------------------> | istio-ingressgateway     |
+| / consumer est.  |                               | (Envoy gateway)          |
++------------------+                               +------------+-------------+
+                                                                |
+                                                                | match Gateway + VirtualService
+                                                                v
+                                             +------------------+------------------+
+                                             | Namespace applicativo nel mesh      |
+                                             | (presente nello SMMR)               |
+                                             |-------------------------------------|
+                                             | Service                              |
+                                             |   |                                  |
+                                             |   v                                  |
+                                             | Pod app + sidecar Envoy              |
+                                             | - traffico intercettato dal sidecar  |
+                                             | - mTLS / policy / metrics            |
+                                             +------------------+------------------+
+                                                                |
+                                                                | east-west traffic
+                                                                v
+                                             +------------------+------------------+
+                                             | Altro namespace / altro servizio     |
+                                             | Pod app + sidecar Envoy              |
+                                             +------------------+------------------+
+                                                                |
+                                                                | traffico esterno opzionale
+                                                                v
+                                                      +---------+-----------+
+                                                      | istio-egressgateway |
+                                                      | (uscita controllata)|
+                                                      +---------+-----------+
+                                                                |
+                                                                v
+                                                         External service
+```
+
+### 15.2 Vista “chi fa cosa”
+
+```text
+SMCP
+  └─ è la CR principale del mesh
+     decide come installare e configurare il control plane
+
+SMMR / ServiceMeshMember
+  └─ decide quali namespace applicativi entrano nel mesh
+
+Istiod
+  ├─ scopre servizi e workload
+  ├─ genera/distribuisce configurazione ai proxy Envoy
+  ├─ gestisce identità e certificati per mTLS
+  └─ applica routing, resilienza e policy
+
+Ingress Gateway
+  ├─ riceve traffico dall'esterno
+  ├─ espone Service NodePort / LoadBalancer / Route
+  └─ inoltra ai servizi interni in base a Gateway + VirtualService
+
+Egress Gateway
+  ├─ opzionale
+  ├─ centralizza l'uscita verso sistemi esterni
+  └─ utile per auditing, policy e percorsi di rete controllati
+
+Sidecar Envoy nei pod applicativi
+  ├─ intercetta il traffico in ingresso/uscita del pod
+  ├─ applica mTLS, retry, timeout, circuit breaking, metriche
+  └─ parla con Istiod per ricevere configurazione
+
+Kiali
+  └─ vista topologica del mesh, health, route, policy
+
+Prometheus / Grafana
+  └─ raccolta metriche e dashboard
+```
+
+### 15.3 Flusso pratico di una richiesta HTTP
+
+```text
+1. Client arriva su NodePort 30001 o 30002
+2. Il service istio-ingressgateway riceve la connessione
+3. Envoy del gateway legge le regole Gateway / VirtualService
+4. Il traffico viene inviato al service applicativo corretto
+5. Il sidecar Envoy del pod target applica policy / mTLS / metriche
+6. Se il servizio chiama un altro servizio mesh, il traffico passa sidecar -> sidecar
+7. Se il servizio deve uscire all'esterno, opzionalmente passa da istio-egressgateway
+8. Metriche e topologia finiscono in Prometheus / Grafana / Kiali
+```
+
+### 15.4 Dove mettere i manifest principali
+
+```text
+istio-system
+  ├─ ServiceMeshControlPlane
+  ├─ ServiceMeshMemberRoll
+  ├─ gateway resources del control plane
+  └─ componenti OSSM (istiod, ingress, egress, kiali, prometheus...)
+
+namespace applicativi
+  ├─ Deployment / Service dell'app
+  ├─ Gateway / VirtualService / DestinationRule / PeerAuthentication
+  └─ pod con sidecar Envoy (se injection abilitata)
+```
+
+### 15.5 Come leggere il posizionamento sui nodi infra
+
+```text
+SMCP
+  ├─ runtime.defaults.pod
+  ├─ runtime.components.pilot.pod
+  ├─ gateways.ingress.runtime.pod
+  └─ gateways.egress.runtime.pod
+
+Se qui imposti:
+  nodeSelector:
+    node-role.kubernetes.io/infra: ""
+
+...e aggiungi le tolerations corrette,
+allora i pod del control plane e dei gateway vengono schedulati sui nodi infra.
+```
+
+### 15.6 Riassunto
+
+```text
+SMCP = installa e governa il mesh
+SMMR = decide quali namespace stanno nel mesh
+Istiod = cervello / control plane
+Envoy sidecar = enforcement locale su ogni pod
+Ingress gateway = ingresso da fuori
+Egress gateway = uscita controllata verso fuori
+Kiali/Prometheus/Grafana = osservabilità
+```
