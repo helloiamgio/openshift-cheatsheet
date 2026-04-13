@@ -736,6 +736,82 @@ Se il cluster usa policy restrittive, puoi definire anche qui `spec.networkPolic
 - `AllowAllIngressEgress`
 - `AllowIngressMetrics`
 
+### 9.4 Troubleshooting: perché la dashboard mostra `No datapoints found`
+
+Il caso più comune è questo:
+
+- la query Prometheus è corretta;
+- ma il `LogFileMetricExporter` non è stato ancora creato;
+- quindi metriche come `log_logged_bytes_total` non esistono ancora nel cluster.
+
+Questo comportamento è coerente con la logica del prodotto: il `LogFileMetricExporter` **non viene deployato di default**, quindi va creato manualmente solo quando servono metriche di volume dei log.
+
+#### Punto chiave da ricordare
+
+C'è una differenza importante tra:
+
+- **CRD/API disponibile ma nessuna CR creata**  
+  In questo caso devi solo creare la risorsa `LogFileMetricExporter`.
+- **CRD/API non disponibile proprio nel cluster**  
+  In questo caso non puoi creare la CR finché non chiarisci lo stato reale dell'Operator o delle CRD installate.
+
+#### Attenzione al nome della resource
+
+Quando fai i test CLI, usa il nome risorsa al plurale:
+
+```bash
+oc get logfilesmetricexporters.logging.openshift.io -A
+```
+
+Per capire se l'API esiste davvero:
+
+```bash
+oc api-resources | grep -i logfile
+oc get crd | grep -i logfile
+```
+
+Se l'API esiste ma non hai ancora creato alcuna CR, vedrai semplicemente che non ci sono risorse.  
+Se invece il server risponde che il tipo risorsa non esiste, allora il problema non è la query PromQL: manca la CRD/API nel cluster.
+
+#### Verifiche operative dopo la creazione della CR
+
+Dopo aver creato la CR, controlla che partano i pod dedicati:
+
+```bash
+oc get pods -n openshift-logging -l app.kubernetes.io/component=logfilesmetricexporter
+```
+
+Poi prova la metrica in quest'ordine:
+
+```promql
+log_logged_bytes_total
+```
+
+```promql
+rate(log_logged_bytes_total[5m])
+```
+
+```promql
+topk(10, round(rate(log_logged_bytes_total[5m])))
+```
+
+Questa sequenza è utile perché, se l'exporter è appena partito, la `rate()` potrebbe non avere ancora abbastanza campioni nei primi minuti.
+
+#### Diagnosi rapida consigliata
+
+```bash
+oc api-resources | grep -i logfile
+oc get logfilesmetricexporters.logging.openshift.io -A
+oc get pods -n openshift-logging -l app.kubernetes.io/component=logfilesmetricexporter
+oc get pods -n openshift-logging -l app.kubernetes.io/component=collector
+```
+
+Interpretazione:
+
+- **API presente + nessuna CR** → crea la CR.
+- **API presente + CR presente ma nessun pod** → problema di scheduling, risorse, tolerations o policy.
+- **API assente** → verifica installazione/versione del Red Hat OpenShift Logging Operator e lo stato delle CRD.
+
 ---
 
 ## 10. AlertingRule e RecordingRule su Loki
