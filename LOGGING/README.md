@@ -1,4 +1,4 @@
-# Corso pratico e ragionato su OpenShift Logging 6.x con LokiStack
+# OpenShift Logging 6.x con LokiStack
 
 > **Target**: amministratori OpenShift che vogliono capire davvero come funziona OpenShift Logging 6.x, come si installa, quali CRD contano, come leggere e scrivere le Custom Resource, come ridurre il volume dei log, come fare tuning su Loki e come verificare che tutto sia corretto.
 >
