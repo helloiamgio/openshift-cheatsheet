@@ -1470,7 +1470,7 @@ oc apply -f custom-app-monitor.yaml
 
 ## **OVN**
 
-# Checklist — OpenShift OVN-Kubernetes
+# OpenShift OVN-Kubernetes
 
 ## 1. Stato rapido dei pod OVN sui master
 
