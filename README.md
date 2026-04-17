@@ -1467,6 +1467,127 @@ oc apply -f custom-app-monitor.yaml
 
 ---
 
+## **OVN**
+
+# Checklist — OpenShift OVN-Kubernetes
+
+## 1. Stato rapido dei pod OVN sui master
+
+```bash
+oc get pods -n openshift-ovn-kubernetes -o wide | \
+  egrep 'ovnkube-node|ovnkube-control-plane|master-0|master-1|master-2'
+```
+
+## 2. Stato dei container degli ovnkube-node
+
+```bash
+for p in $(oc get pods -n openshift-ovn-kubernetes -l app=ovnkube-node -o jsonpath='{range.items[*]}{.metadata.name}{"\n"}{end}'); do
+  echo "=== $p ==="
+  oc get pod -n openshift-ovn-kubernetes "$p" -o json | \
+    jq -r '.spec.nodeName, (.status.containerStatuses[] | "\(.name)=\(.ready)")'
+done
+```
+
+## 3. Eventi recenti di OVN
+
+```bash
+oc get events -n openshift-ovn-kubernetes --sort-by=.lastTimestamp | tail -100
+```
+
+## 4. Log utili degli ovnkube-node sui 3 master
+
+```bash
+for p in ovnkube-node-kd568 ovnkube-node-tcr28 ovnkube-node-ms268; do
+  echo "### $p : ovn-controller"
+  oc logs -n openshift-ovn-kubernetes $p -c ovn-controller --since=2h | \
+    egrep -i 'error|warn|timeout|conntrack|openflow|geneve|health|route|gateway|mtu'
+
+  echo "### $p : ovnkube-controller"
+  oc logs -n openshift-ovn-kubernetes $p -c ovnkube-controller --since=2h | \
+    egrep -i 'error|warn|timeout|egress|route|gateway|management port'
+done
+```
+
+## 5. Log del control plane OVN
+
+```bash
+for p in $(oc get pods -n openshift-ovn-kubernetes -l app=ovnkube-control-plane -o name); do
+  echo "### $p"
+  oc logs -n openshift-ovn-kubernetes "$p" -c ovnkube-cluster-manager --since=2h | \
+    egrep -i 'error|warn|timeout|master|node|egress|route|gateway'
+done
+```
+
+## 6. PodNetworkConnectivityCheck verso i master
+
+```bash
+for x in \
+  network-check-source-ocpapp-dr-g5t4w-worker-0-t56f7-to-network-check-target-ocpapp-dr-g5t4w-master-0 \
+  network-check-source-ocpapp-dr-g5t4w-worker-0-t56f7-to-network-check-target-ocpapp-dr-g5t4w-master-1 \
+  network-check-source-ocpapp-dr-g5t4w-worker-0-t56f7-to-network-check-target-ocpapp-dr-g5t4w-master-2
+ do
+  echo "### $x"
+  oc get podnetworkconnectivitycheck -n openshift-network-diagnostics "$x" -o yaml | \
+    sed -n '/status:/,$p'
+done
+```
+
+## 7. Test host network dei master verso LDAP
+
+```bash
+for n in ocpapp-dr-g5t4w-master-0 ocpapp-dr-g5t4w-master-1 ocpapp-dr-g5t4w-master-2; do
+  echo "### $n"
+  oc debug node/$n -- chroot /host bash -lc '
+    echo -n "NODE=$(hostname) TCP636: "
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" && echo OK || echo FAIL
+    echo -n "ROUTE: "
+    ip route get 10.213.48.178 2>/dev/null || true
+  '
+done
+```
+
+## 8. Test pod network dai pod OAuth verso LDAP
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo -n "$p -> "
+  oc -n openshift-authentication exec "$p" -- bash -lc '
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" >/dev/null 2>&1 \
+      && echo OK || echo FAIL
+  '
+done
+```
+
+## 9. Restart mirato degli ovnkube-node sui master problematici
+
+### Master-0
+
+```bash
+oc delete pod -n openshift-ovn-kubernetes ovnkube-node-kd568
+oc get pod -n openshift-ovn-kubernetes -w | grep ovnkube-node-kd568
+```
+
+### Master-1
+
+```bash
+oc delete pod -n openshift-ovn-kubernetes ovnkube-node-tcr28
+oc get pod -n openshift-ovn-kubernetes -w | grep ovnkube-node-tcr28
+```
+
+## 10. Ritest dopo restart OVN
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo -n "$p -> "
+  oc -n openshift-authentication exec "$p" -- bash -lc '
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" >/dev/null 2>&1 \
+      && echo OK || echo FAIL
+  '
+done
+```
+
+---
+
 ## **Operator-Lifecycle-Manager (OLM)**
 
 ### List Installed Operators
