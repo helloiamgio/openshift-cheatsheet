@@ -1055,6 +1055,101 @@ Apply the configuration:
 oc apply -f oauth.yaml
 ```
 
+# OpenShift Authentication / LDAP
+
+## 1. Stato rapido
+
+```bash
+oc get co authentication console ingress
+oc -n openshift-authentication get pods -o wide
+oc get oauth cluster -o yaml
+```
+
+## 2. Log OAuth con errori LDAP/TLS/timeout
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo "### $p"
+  oc -n openshift-authentication logs "$p" --since=30m | \
+    egrep -i 'AuthenticationError|ldap|x509|tls|invalid credentials|claimed by identity|not found|no such object|timeout'
+done
+```
+
+## 3. Test LDAPS da tutti i pod OAuth — versione breve
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo -n "$p -> "
+  oc -n openshift-authentication exec "$p" -- bash -lc '
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" >/dev/null 2>&1 \
+      && echo OK || echo FAIL
+  '
+done
+```
+
+## 4. Test LDAPS da tutti i pod OAuth — versione estesa
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo "### $p"
+  oc -n openshift-authentication exec "$p" -- bash -lc '
+    echo "HOST=$(hostname)"
+    getent hosts msad1.cariprpc.it || true
+    cat /etc/resolv.conf
+    echo -n "TCP636: "
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" && echo OK || echo FAIL
+  '
+done
+```
+
+## 5. Test LDAPS via DNS invece che IP
+
+```bash
+for p in $(oc -n openshift-authentication get pod -l app=oauth-openshift -o name); do
+  echo -n "$p -> "
+  oc -n openshift-authentication exec "$p" -- bash -lc '
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/msad1.cariprpc.it/636" >/dev/null 2>&1 \
+      && echo OK || echo FAIL
+  '
+done
+```
+
+## 6. Verifica certificato della route OAuth
+
+```bash
+HOST=$(oc -n openshift-authentication get route oauth-openshift -o jsonpath='{.spec.host}')
+echo "$HOST"
+
+openssl s_client -connect ${HOST}:443 -servername ${HOST} </dev/null 2>/dev/null | \
+openssl x509 -noout -subject -issuer -dates
+```
+
+## 7. Verifica reachability LDAP dai nodi master (host network)
+
+```bash
+for n in ocpapp-dr-g5t4w-master-0 ocpapp-dr-g5t4w-master-1 ocpapp-dr-g5t4w-master-2; do
+  echo "### $n"
+  oc debug node/$n -- chroot /host bash -lc '
+    echo -n "NODE=$(hostname) TCP636: "
+    timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.213.48.178/636" && echo OK || echo FAIL
+    echo -n "ROUTE: "
+    ip route get 10.213.48.178 2>/dev/null || true
+  '
+done
+```
+
+## 8. NetworkPolicy nel namespace openshift-authentication
+
+```bash
+oc get netpol -n openshift-authentication -o yaml
+```
+
+## 9. Restart mirato di un solo pod OAuth
+
+```bash
+oc delete pod -n openshift-authentication <oauth-openshift-pod>
+oc -n openshift-authentication get pods -w
+
 ---
 
 ## **Images**
