@@ -263,10 +263,48 @@ sum(namespace_memory:kube_pod_container_resource_requests:sum{cluster=""}) / sum
 sum(namespace_memory:kube_pod_container_resource_limits:sum{cluster=""}) / sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory",cluster=""})
 ```
 
-### CPU Usage per nodo worker (media su 5m)
+### CPU Usage per nodo worker %
 ```promql
-100 * avg(rate(node_cpu_seconds_total{mode!="idle", instance=~".*worker.*"}[5m])) by (instance)
-  / avg(count(node_cpu_seconds_total{mode="idle", instance=~".*worker.*"}) by (instance))
+100 *
+max by (nodename) (
+  (
+    1 -
+    avg by (instance) (
+      rate(node_cpu_seconds_total{mode="idle"}[5m])
+    )
+  )
+  * on(instance) group_left(nodename)
+  node_uname_info
+  * on(nodename) group_left()
+  label_replace(
+    kube_node_role{role="worker"},
+    "nodename",
+    "$1",
+    "node",
+    "(.*)"
+  )
+)
+```
+
+### CPU Usage per nodo worker (core)
+```promql
+max by (nodename) (
+  (
+    sum by (instance) (
+      rate(node_cpu_seconds_total{mode!~"idle|iowait|steal"}[5m])
+    )
+  )
+  * on(instance) group_left(nodename)
+  node_uname_info
+  * on(nodename) group_left()
+  label_replace(
+    kube_node_role{role="worker"},
+    "nodename",
+    "$1",
+    "node",
+    "(.*)"
+  )
+)
 ```
 
 ### CPU Requests per nodo worker
@@ -289,10 +327,45 @@ sum by (node) (
   / sum(kube_node_status_allocatable{resource="cpu", unit="core"}) by (node)
 ```
 
-### RAM usata per nodo worker
+### RAM usata per nodo worker %
 ```promql
-100 * (1 - (sum(node_memory_MemAvailable_bytes{instance=~".*worker.*"}) by (instance)
-  / sum(node_memory_MemTotal_bytes{instance=~".*worker.*"}) by (instance)))
+100 *
+max by (nodename) (
+  instance:node_memory_utilisation:ratio
+  * on(instance) group_left(nodename)
+  node_uname_info
+  * on(nodename) group_left()
+  label_replace(
+    kube_node_role{role="worker"},
+    "nodename",
+    "$1",
+    "node",
+    "(.*)"
+  )
+)
+```
+
+### RAM usata per nodo worker GBi
+```promql
+max by (nodename) (
+  (
+    (
+      node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+    )
+    * on(instance) group_left(nodename)
+    node_uname_info
+    * on(nodename) group_left()
+    label_replace(
+      kube_node_role{role="worker"},
+      "nodename",
+      "$1",
+      "node",
+      "(.*)"
+    )
+  )
+)
+/
+1024 / 1024 / 1024
 ```
 
 ### RAM Requests per nodo worker
