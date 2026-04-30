@@ -1,3 +1,13 @@
 title: OpenShift Cheat Sheet
-description: A practical OpenShift knowledge base
-theme: jekyll-theme-cayman
+description: A practical OpenShift knowledge base with cheat sheets, commands, troubleshooting tips
+remote_theme: just-the-docs/just-the-docs
+color_scheme: dark
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  "View on GitHub":
+    - "https://github.com/helloiamgio/openshift-cheatsheet"
+
+plugins:
+  - jekyll-remote-theme
