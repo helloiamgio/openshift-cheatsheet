@@ -1,3 +1,8 @@
+---
+title: Home
+nav_order: 1
+---
+
 # 🚀 OpenShift Cheat Sheet 🚀
 
 ![Alt text](https://github.com/helloiamgio/openshift-cheatsheet/blob/main/architecture_overview.png)
